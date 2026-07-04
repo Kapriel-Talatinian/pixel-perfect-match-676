@@ -919,6 +919,8 @@ function TwilioSettings({
   realCallEnabled,
   setRealCallEnabled,
   callStatus,
+  watchShop,
+  setWatchShop,
 }: {
   toNumber: string;
   setToNumber: (v: string) => void;
@@ -927,6 +929,8 @@ function TwilioSettings({
   realCallEnabled: boolean;
   setRealCallEnabled: (v: boolean) => void;
   callStatus: string;
+  watchShop: boolean;
+  setWatchShop: (v: boolean) => void;
 }) {
   const ready = /^\+\d{6,15}$/.test(toNumber) && /^\+\d{6,15}$/.test(fromNumber);
   return (
