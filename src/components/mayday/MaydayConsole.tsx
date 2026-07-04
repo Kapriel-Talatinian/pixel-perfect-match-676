@@ -36,6 +36,8 @@ type VoiceStatus = {
   twilioConnector: boolean;
   gradium: boolean;
   gradiumVoice: string;
+  suggestedFrom: string | null;
+  suggestedTo: string | null;
 };
 
 const GREEN_METRICS: Metrics = { error_rate: 0.006, p95_ms: 168, rps: 58, green: true };
@@ -192,9 +194,15 @@ export function MaydayConsole() {
   const fetchVoiceStatus = useServerFn(getVoiceStatus);
 
   // What can the server really do (Twilio creds? Gradium key?) — shown in CONFIG.
+  // Also prefill To/From with the numbers discovered on the Twilio account.
   useEffect(() => {
     fetchVoiceStatus({})
-      .then((v) => setVoiceStatus(v as VoiceStatus))
+      .then((v) => {
+        const s = v as VoiceStatus;
+        setVoiceStatus(s);
+        setToNumber((cur) => cur || s.suggestedTo || "");
+        setFromNumber((cur) => cur || s.suggestedFrom || "");
+      })
       .catch(() => setVoiceStatus(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1339,7 +1347,7 @@ function ServicePanel({
           </li>
           <li className="flex items-center gap-2 text-muted-foreground">
             <span className="w-14 shrink-0">7ee109</span>
-            <span className="truncate">grafana/dashboard.json</span>
+            <span className="truncate">ops/loadgen.py</span>
             <span className="ml-auto shrink-0 text-[10px]">15:12</span>
           </li>
         </ul>

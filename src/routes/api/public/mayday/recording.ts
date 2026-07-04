@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { gradiumStt, ttsUrl } from "@/lib/mayday/gradium.server";
+import { twilioBasicAuth, twilioCreds } from "@/lib/mayday/twilio.server";
 import {
   CONFIRM_FR,
   DEFAULT_WAIT_FR,
@@ -31,19 +32,11 @@ async function playOrSay(origin: string, text: string) {
   }
 }
 
-function twilioAuthHeader(): string | null {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  if (!sid || !token) return null;
-  const raw = `${sid}:${token}`;
-  const b64 = typeof btoa !== "undefined" ? btoa(raw) : Buffer.from(raw).toString("base64");
-  return `Basic ${b64}`;
-}
-
 // Download the caller's recording from Twilio (WAV). Recordings can lag a
 // moment behind the callback, so retry briefly.
 async function fetchRecording(recordingUrl: string): Promise<ArrayBuffer> {
-  const auth = twilioAuthHeader();
+  const creds = twilioCreds();
+  const auth = creds ? twilioBasicAuth(creds) : null;
   const url = `${recordingUrl}.wav`;
   let lastErr = "";
   for (let attempt = 0; attempt < 3; attempt++) {

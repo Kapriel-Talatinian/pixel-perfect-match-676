@@ -197,7 +197,7 @@ export const SCRIPT: ScriptStep[] = [
       title: "get_git_history → 10 commits",
       result: `abc123  p1   16:00:42  shop/settings.py     INVENTORY_SERVICE_URL: 8000 → 9999
 b21c4a  p3   15:44:11  docs/README.md       typos
-7ee109  p2   15:12:03  grafana/dashboard.json  panel tweak`,
+7ee109  p2   15:12:03  ops/loadgen.py       traffic tweak`,
     },
   },
   {

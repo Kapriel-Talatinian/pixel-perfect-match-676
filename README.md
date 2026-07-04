@@ -48,9 +48,14 @@ Poser dans l'environnement du serveur (`.env` en local — chargé automatiqueme
 
 | Var | Rôle |
 |---|---|
-| `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` | appel sortant + téléchargement de l'enregistrement |
+| `TWILIO_ACCOUNT_SID` + `TWILIO_API_KEY_SID` + `TWILIO_API_KEY_SECRET` | appel sortant + téléchargement de l'enregistrement (ou `TWILIO_AUTH_TOKEN` à la place de la paire SK) |
 | `GRADIUM_API_KEY` | voix réelles : **Gradium TTS** (brief parlé) + **Gradium STT** (compréhension de la réponse) |
 | `GRADIUM_VOICE_ID` | optionnel — défaut Elise (fr) ; Leo `axlOaUiFyOZhy4nv`, Olivier `vMYQUSzm6GRkJX6d` |
+| `ALLOW_CALL_API=1` | optionnel — active `POST /api/mayday/place-call` (déclenchement d'appel par curl) |
+
+Dès que les clés Twilio sont posées, la console **découvre et préremplit toute seule**
+le numéro From (numéro du compte) et le To (caller ID vérifié). Compte trial : le To
+doit être un numéro **vérifié** dans la console Twilio, au format E.164 exact.
 
 Le panneau CONFIG affiche en direct ce que le serveur sait faire
 (« Twilio ■ direct · Gradium ■ TTS+STT »). Sans clé Gradium ⇒ fallback automatique

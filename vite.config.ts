@@ -12,4 +12,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    // Dev only: let tunneled hosts (loca.lt/ngrok) reach the dev server so
+    // Twilio webhooks can be tested end-to-end from localhost.
+    server: { allowedHosts: true },
+  },
 });

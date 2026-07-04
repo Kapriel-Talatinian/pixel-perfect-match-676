@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import type { IncidentDecision } from "./store.server";
 import { gradiumConfigured, gradiumVoiceId, ttsUrl } from "./gradium.server";
+import { discoverNumbers, twilioBasicAuth, twilioCreds } from "./twilio.server";
 
 function xmlEscape(s: string) {
   return s
@@ -52,24 +53,16 @@ async function buildGradiumTwiml(origin: string, id: string, state: string | nul
 </Response>`;
 }
 
-function basicAuth(user: string, pass: string) {
-  const raw = `${user}:${pass}`;
-  if (typeof btoa !== "undefined") return btoa(raw);
-  return Buffer.from(raw).toString("base64");
-}
-
 async function placeCall(to: string, from: string, twiml: string): Promise<{ sid?: string }> {
   const body = new URLSearchParams({ To: to, From: from, Twiml: twiml });
 
-  // Preferred: direct Twilio REST API with real credentials.
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const twilioBase = (process.env.TWILIO_API_BASE || "https://api.twilio.com").replace(/\/$/, "");
-  if (accountSid && authToken) {
-    const res = await fetch(`${twilioBase}/2010-04-01/Accounts/${accountSid}/Calls.json`, {
+  // Preferred: direct Twilio REST API (API Key SK+secret, or Account SID + auth token).
+  const creds = twilioCreds();
+  if (creds) {
+    const res = await fetch(`${creds.base}/2010-04-01/Accounts/${creds.accountSid}/Calls.json`, {
       method: "POST",
       headers: {
-        Authorization: `Basic ${basicAuth(accountSid, authToken)}`,
+        Authorization: twilioBasicAuth(creds),
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body,
@@ -114,58 +107,75 @@ function safeHttpUrl(u: string | undefined): string | null {
   }
 }
 
+// Core call logic, shared by the UI server fn and the ops API route.
+export async function placeMaydayCall(opts: {
+  to: string;
+  from: string;
+  origin: string;
+  stateUrl?: string;
+}): Promise<{ id: string; callSid: string | null; voice: "gradium" | "polly" }> {
+  if (!/^\+\d{6,15}$/.test(opts.to)) throw new Error("To must be E.164 (+33...)");
+  if (!/^\+\d{6,15}$/.test(opts.from)) throw new Error("From must be E.164 Twilio number");
+  const { incidentStore } = await import("./store.server");
+
+  const id = `INC-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  // The VM shop (single process) doubles as shared decision state so the
+  // phone webhook and the polling UI agree even across stateless edge isolates.
+  const state = safeHttpUrl(opts.stateUrl);
+  const useGradium = gradiumConfigured();
+  const callback = `${opts.origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}${state ? `&state=${encodeURIComponent(state)}` : ""}`;
+  const twiml = useGradium
+    ? await buildGradiumTwiml(opts.origin, id, state)
+    : buildPollyTwiml(PHONE_BRIEF_FR, callback);
+
+  incidentStore.set(id, {
+    id,
+    to: opts.to,
+    from: opts.from,
+    brief: PHONE_BRIEF_FR,
+    decision: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  try {
+    const payload = await placeCall(opts.to, opts.from, twiml);
+    const rec = incidentStore.get(id)!;
+    rec.callSid = payload.sid;
+    rec.updatedAt = Date.now();
+    return { id, callSid: payload.sid ?? null, voice: useGradium ? "gradium" : "polly" };
+  } catch (e) {
+    incidentStore.delete(id);
+    throw e;
+  }
+}
+
 export const startMaydayCall = createServerFn({ method: "POST" })
   .inputValidator((input: { to: string; from: string; brief: string; stateUrl?: string }) => {
     if (!/^\+\d{6,15}$/.test(input.to)) throw new Error("To must be E.164 (+33...)");
     if (!/^\+\d{6,15}$/.test(input.from)) throw new Error("From must be E.164 Twilio number");
-    if (!input.brief || input.brief.length > 800) throw new Error("Brief 1..800 chars");
     return input;
   })
   .handler(async ({ data }) => {
-    const { incidentStore } = await import("./store.server");
-
-    const id = `INC-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const req = getRequest();
     const origin = new URL(req.url).origin;
-    // The VM shop (single process) doubles as shared decision state so the
-    // phone webhook and the polling UI agree even across stateless edge isolates.
-    const state = safeHttpUrl(data.stateUrl);
-    const useGradium = gradiumConfigured();
-    const callback = `${origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}${state ? `&state=${encodeURIComponent(state)}` : ""}`;
-    const twiml = useGradium
-      ? await buildGradiumTwiml(origin, id, state)
-      : buildPollyTwiml(PHONE_BRIEF_FR, callback);
-
-    incidentStore.set(id, {
-      id,
-      to: data.to,
-      from: data.from,
-      brief: data.brief,
-      decision: null,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    try {
-      const payload = await placeCall(data.to, data.from, twiml);
-      const rec = incidentStore.get(id)!;
-      rec.callSid = payload.sid;
-      rec.updatedAt = Date.now();
-      return { id, callSid: payload.sid ?? null, voice: useGradium ? "gradium" : "polly" };
-    } catch (e) {
-      incidentStore.delete(id);
-      throw e;
-    }
+    return placeMaydayCall({ to: data.to, from: data.from, origin, stateUrl: data.stateUrl });
   });
 
 // What the server can actually do right now — shown in the CONFIG panel so
-// the operator sees at a glance whether the real call will work.
-export const getVoiceStatus = createServerFn({ method: "GET" }).handler(async () => ({
-  twilioDirect: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
-  twilioConnector: !!(process.env.LOVABLE_API_KEY && process.env.TWILIO_API_KEY),
-  gradium: gradiumConfigured(),
-  gradiumVoice: gradiumVoiceId(),
-}));
+// the operator sees at a glance whether the real call will work. Also
+// auto-discovers the account's From number and the verified To number.
+export const getVoiceStatus = createServerFn({ method: "GET" }).handler(async () => {
+  const numbers = await discoverNumbers();
+  return {
+    twilioDirect: !!twilioCreds(),
+    twilioConnector: !!(process.env.LOVABLE_API_KEY && process.env.TWILIO_API_KEY),
+    gradium: gradiumConfigured(),
+    gradiumVoice: gradiumVoiceId(),
+    suggestedFrom: numbers.from ?? null,
+    suggestedTo: numbers.to ?? null,
+  };
+});
 
 export const getIncidentDecision = createServerFn({ method: "GET" })
   .inputValidator((input: { id: string; stateUrl?: string }) => input)
