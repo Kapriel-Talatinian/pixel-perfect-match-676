@@ -376,19 +376,23 @@ function TopBar({
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Duration</div>
             <div className="text-lg font-bold tabular-nums">{Math.floor(durationSecs / 60)}m {String(durationSecs % 60).padStart(2, "0")}s</div>
           </div>
+          <Link
+            to="/shop"
+            className="flex items-center gap-1.5 border border-border bg-background/40 px-3 py-2 text-mono text-xs uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-primary"
+          ><Store className="h-3.5 w-3.5" /> Shop <ArrowUpRight className="h-3 w-3" /></Link>
           {canBreak ? (
             <button
               onClick={onBreak}
-              className="rounded-md bg-danger px-4 py-2 text-sm font-bold text-white shadow-lg shadow-danger/40 transition hover:brightness-110 active:scale-95"
+              className="flex items-center gap-2 bg-danger px-4 py-2 text-sm font-bold text-white shadow-lg shadow-danger/40 transition hover:brightness-110 active:scale-95"
             >
-              💥 Break production
+              <Zap className="h-4 w-4" /> Break production
             </button>
           ) : (
             <button
               onClick={onReset}
-              className="rounded-md border border-border bg-muted px-4 py-2 text-sm font-medium hover:bg-secondary"
+              className="flex items-center gap-2 border border-border bg-muted px-4 py-2 text-sm font-medium hover:bg-secondary"
             >
-              Reset
+              <RotateCcw className="h-4 w-4" /> Reset
             </button>
           )}
         </div>
