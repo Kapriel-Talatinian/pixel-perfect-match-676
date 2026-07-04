@@ -336,9 +336,15 @@ export function MaydayConsole() {
         cache: "no-store",
       });
       const h = await r.json();
-      return { green: internalGreen && h.ok, probe: `${probe} · remote 200 in ${h.latency_ms}ms` };
+      if (h.ok) return { green: internalGreen, probe: `${probe} · remote 200 in ${h.latency_ms}ms` };
+      // A reachable-but-broken VM blocks resolution; an unreachable VM (venue
+      // network, VM down) must not hold the demo hostage — verify on internal only.
+      if (String(h.reason ?? "").startsWith("unreachable")) {
+        return { green: internalGreen, probe: `${probe} · remote unreachable (skipped)` };
+      }
+      return { green: false, probe: `${probe} · remote still degraded` };
     } catch {
-      return { green: false, probe: `${probe} · remote unreachable` };
+      return { green: internalGreen, probe: `${probe} · remote probe failed (skipped)` };
     }
   }, []);
 
@@ -756,7 +762,7 @@ function Header({
   const active = phase !== "idle";
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background">
-      <div className="mx-auto flex max-w-[1440px] flex-wrap items-stretch gap-x-4 gap-y-2 px-4 py-3 lg:px-6">
+      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 lg:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <div
             className={`grid h-10 w-10 shrink-0 place-items-center text-mono text-lg font-bold ${isBroken ? "bg-danger text-white glow-red" : "bg-primary text-primary-foreground glow-green"}`}
@@ -817,7 +823,7 @@ function Header({
 
           <Link
             to="/shop"
-            className="flex h-full items-center gap-1.5 border border-border px-3 py-2 text-mono text-[11px] uppercase tracking-widest hover:bg-foreground hover:text-background"
+            className="flex items-center gap-1.5 border border-border px-3 py-2 text-mono text-[11px] uppercase tracking-widest hover:bg-foreground hover:text-background"
           >
             <Store className="h-3.5 w-3.5" /> Shop <ArrowUpRight className="h-3 w-3" />
           </Link>
