@@ -193,6 +193,7 @@ export function MaydayConsole() {
 
   const reset = useCallback(() => {
     clearTimers();
+    if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
     setEvents([]);
     setMetrics(GREEN_METRICS);
     setRinging(false);
@@ -203,7 +204,45 @@ export function MaydayConsole() {
     setCallAnswered(false);
     setBriefIndex(0);
     setPhase("idle");
+    setIncidentId(null);
+    setCallStatus("");
   }, [clearTimers]);
+
+  // Trigger real Twilio call the moment the script starts ringing
+  useEffect(() => {
+    if (!ringing || !realCallEnabled || incidentId) return;
+    if (!toNumber || !fromNumber) {
+      setCallStatus("⚠ enter your phone + Twilio From number to enable real call");
+      return;
+    }
+    setCallStatus("📡 placing Twilio call…");
+    startCall({ data: { to: toNumber, from: fromNumber, brief: PHONE_BRIEF } })
+      .then((r) => {
+        setIncidentId(r.id);
+        setCallStatus(`📞 ringing ${toNumber} · SID ${(r.callSid ?? "").slice(-6) || "?"}`);
+      })
+      .catch((e: unknown) => setCallStatus(`❌ ${(e as Error)?.message ?? "call failed"}`));
+  }, [ringing, realCallEnabled, toNumber, fromNumber, incidentId, startCall]);
+
+  // Poll for the caller's DTMF decision, mirror it into the UI
+  useEffect(() => {
+    if (!incidentId) return;
+    if (phase === "resolved" || phase === "rejected" || phase === "idle") return;
+    const id = window.setInterval(async () => {
+      try {
+        const r = await pollDecision({ data: { id: incidentId } });
+        if (r.decision) {
+          window.clearInterval(id);
+          pollRef.current = null;
+          setCallStatus(`✅ phone reply: ${r.decision.toUpperCase()}`);
+          if (!callAnswered) setCallAnswered(true);
+          decide(r.decision);
+        }
+      } catch { /* keep polling */ }
+    }, 1500);
+    pollRef.current = id;
+    return () => { window.clearInterval(id); pollRef.current = null; };
+  }, [incidentId, phase, pollDecision, decide, callAnswered]);
 
   const canBreak = phase === "idle" || phase === "resolved" || phase === "rejected";
   const isBroken = !metrics.green;
