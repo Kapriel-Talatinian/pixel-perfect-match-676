@@ -251,6 +251,25 @@ export function MaydayConsole() {
     return () => { window.clearInterval(id); pollRef.current = null; };
   }, [incidentId, phase, pollDecision, decide, callAnswered]);
 
+  // Watchdog: poll the real /shop /api/shop/health and auto-trigger the flow when broken
+  useEffect(() => {
+    if (!watchShop) return;
+    const canTrigger = () => phase === "idle" || phase === "resolved" || phase === "rejected";
+    const tick = async () => {
+      try {
+        const r = await fetch("/api/shop/health", { cache: "no-store" });
+        const h = await r.json();
+        if (h.broken && canTrigger()) breakProduction();
+      } catch { /* ignore */ }
+    };
+    tick();
+    const id = window.setInterval(tick, 2500);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchShop, phase]);
+
+
+
   const canBreak = phase === "idle" || phase === "resolved" || phase === "rejected";
   const isBroken = !metrics.green;
   const durationSecs = useMemo(() => {
