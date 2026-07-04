@@ -51,8 +51,24 @@ export function MaydayConsole() {
   const [showPostmortem, setShowPostmortem] = useState(false);
   const [callAnswered, setCallAnswered] = useState(false);
   const [briefIndex, setBriefIndex] = useState(0);
+
+  // --- REAL Twilio call state ---
+  const [toNumber, setToNumber] = useState<string>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.to")) || "");
+  const [fromNumber, setFromNumber] = useState<string>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.from")) || "");
+  const [realCallEnabled, setRealCallEnabled] = useState<boolean>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.real") === "1") || false);
+  const [callStatus, setCallStatus] = useState<string>("");
+  const [incidentId, setIncidentId] = useState<string | null>(null);
+
   const timeoutsRef = useRef<number[]>([]);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const pollRef = useRef<number | null>(null);
+
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.to", toNumber); }, [toNumber]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.from", fromNumber); }, [fromNumber]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.real", realCallEnabled ? "1" : "0"); }, [realCallEnabled]);
+
+  const startCall = useServerFn(startMaydayCall);
+  const pollDecision = useServerFn(getIncidentDecision);
 
   const clearTimers = useCallback(() => {
     timeoutsRef.current.forEach((t) => clearTimeout(t));
