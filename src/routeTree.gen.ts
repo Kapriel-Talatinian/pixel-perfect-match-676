@@ -22,6 +22,7 @@ import { Route as ApiPublicMaydayVoiceResponseRouteImport } from './routes/api/p
 import { Route as ApiPublicMaydayTtsRouteImport } from './routes/api/public/mayday/tts'
 import { Route as ApiPublicMaydayRecordingRouteImport } from './routes/api/public/mayday/recording'
 import { Route as ApiPublicMaydayHoldRouteImport } from './routes/api/public/mayday/hold'
+import { Route as ApiPublicMaydayGatherTestRouteImport } from './routes/api/public/mayday/gather-test'
 
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
@@ -90,6 +91,12 @@ const ApiPublicMaydayHoldRoute = ApiPublicMaydayHoldRouteImport.update({
   path: '/api/public/mayday/hold',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMaydayGatherTestRoute =
+  ApiPublicMaydayGatherTestRouteImport.update({
+    id: '/api/public/mayday/gather-test',
+    path: '/api/public/mayday/gather-test',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/api/shop/products': typeof ApiShopProductsRoute
   '/api/vultr-shop/break': typeof ApiVultrShopBreakRoute
   '/api/vultr-shop/health': typeof ApiVultrShopHealthRoute
+  '/api/public/mayday/gather-test': typeof ApiPublicMaydayGatherTestRoute
   '/api/public/mayday/hold': typeof ApiPublicMaydayHoldRoute
   '/api/public/mayday/recording': typeof ApiPublicMaydayRecordingRoute
   '/api/public/mayday/tts': typeof ApiPublicMaydayTtsRoute
@@ -115,6 +123,7 @@ export interface FileRoutesByTo {
   '/api/shop/products': typeof ApiShopProductsRoute
   '/api/vultr-shop/break': typeof ApiVultrShopBreakRoute
   '/api/vultr-shop/health': typeof ApiVultrShopHealthRoute
+  '/api/public/mayday/gather-test': typeof ApiPublicMaydayGatherTestRoute
   '/api/public/mayday/hold': typeof ApiPublicMaydayHoldRoute
   '/api/public/mayday/recording': typeof ApiPublicMaydayRecordingRoute
   '/api/public/mayday/tts': typeof ApiPublicMaydayTtsRoute
@@ -131,6 +140,7 @@ export interface FileRoutesById {
   '/api/shop/products': typeof ApiShopProductsRoute
   '/api/vultr-shop/break': typeof ApiVultrShopBreakRoute
   '/api/vultr-shop/health': typeof ApiVultrShopHealthRoute
+  '/api/public/mayday/gather-test': typeof ApiPublicMaydayGatherTestRoute
   '/api/public/mayday/hold': typeof ApiPublicMaydayHoldRoute
   '/api/public/mayday/recording': typeof ApiPublicMaydayRecordingRoute
   '/api/public/mayday/tts': typeof ApiPublicMaydayTtsRoute
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/api/shop/products'
     | '/api/vultr-shop/break'
     | '/api/vultr-shop/health'
+    | '/api/public/mayday/gather-test'
     | '/api/public/mayday/hold'
     | '/api/public/mayday/recording'
     | '/api/public/mayday/tts'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/api/shop/products'
     | '/api/vultr-shop/break'
     | '/api/vultr-shop/health'
+    | '/api/public/mayday/gather-test'
     | '/api/public/mayday/hold'
     | '/api/public/mayday/recording'
     | '/api/public/mayday/tts'
@@ -178,6 +190,7 @@ export interface FileRouteTypes {
     | '/api/shop/products'
     | '/api/vultr-shop/break'
     | '/api/vultr-shop/health'
+    | '/api/public/mayday/gather-test'
     | '/api/public/mayday/hold'
     | '/api/public/mayday/recording'
     | '/api/public/mayday/tts'
@@ -194,6 +207,7 @@ export interface RootRouteChildren {
   ApiShopProductsRoute: typeof ApiShopProductsRoute
   ApiVultrShopBreakRoute: typeof ApiVultrShopBreakRoute
   ApiVultrShopHealthRoute: typeof ApiVultrShopHealthRoute
+  ApiPublicMaydayGatherTestRoute: typeof ApiPublicMaydayGatherTestRoute
   ApiPublicMaydayHoldRoute: typeof ApiPublicMaydayHoldRoute
   ApiPublicMaydayRecordingRoute: typeof ApiPublicMaydayRecordingRoute
   ApiPublicMaydayTtsRoute: typeof ApiPublicMaydayTtsRoute
@@ -294,6 +308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMaydayHoldRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mayday/gather-test': {
+      id: '/api/public/mayday/gather-test'
+      path: '/api/public/mayday/gather-test'
+      fullPath: '/api/public/mayday/gather-test'
+      preLoaderRoute: typeof ApiPublicMaydayGatherTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -306,6 +327,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiShopProductsRoute: ApiShopProductsRoute,
   ApiVultrShopBreakRoute: ApiVultrShopBreakRoute,
   ApiVultrShopHealthRoute: ApiVultrShopHealthRoute,
+  ApiPublicMaydayGatherTestRoute: ApiPublicMaydayGatherTestRoute,
   ApiPublicMaydayHoldRoute: ApiPublicMaydayHoldRoute,
   ApiPublicMaydayRecordingRoute: ApiPublicMaydayRecordingRoute,
   ApiPublicMaydayTtsRoute: ApiPublicMaydayTtsRoute,

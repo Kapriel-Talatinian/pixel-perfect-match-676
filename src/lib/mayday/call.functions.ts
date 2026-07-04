@@ -53,8 +53,15 @@ async function buildGradiumTwiml(origin: string, id: string, state: string | nul
 </Response>`;
 }
 
-async function placeCall(to: string, from: string, twiml: string): Promise<{ sid?: string }> {
+async function placeCall(
+  to: string,
+  from: string,
+  twiml: string,
+  sendDigits?: string,
+): Promise<{ sid?: string }> {
   const body = new URLSearchParams({ To: to, From: from, Twiml: twiml });
+  // Auto-press digits after answer — used for human-free end-to-end call tests.
+  if (sendDigits) body.set("SendDigits", sendDigits);
 
   // Preferred: direct Twilio REST API (API Key SK+secret, or Account SID + auth token).
   const creds = twilioCreds();
@@ -113,6 +120,7 @@ export async function placeMaydayCall(opts: {
   from: string;
   origin: string;
   stateUrl?: string;
+  sendDigits?: string;
 }): Promise<{ id: string; callSid: string | null; voice: "gradium" | "polly" }> {
   if (!/^\+\d{6,15}$/.test(opts.to)) throw new Error("To must be E.164 (+33...)");
   if (!/^\+\d{6,15}$/.test(opts.from)) throw new Error("From must be E.164 Twilio number");
@@ -139,7 +147,7 @@ export async function placeMaydayCall(opts: {
   });
 
   try {
-    const payload = await placeCall(opts.to, opts.from, twiml);
+    const payload = await placeCall(opts.to, opts.from, twiml, opts.sendDigits);
     const rec = incidentStore.get(id)!;
     rec.callSid = payload.sid;
     rec.updatedAt = Date.now();

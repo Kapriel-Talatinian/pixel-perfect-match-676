@@ -20,6 +20,7 @@ export const Route = createFileRoute("/api/mayday/place-call")({
           to?: string;
           from?: string;
           stateUrl?: string;
+          sendDigits?: string;
         };
         const discovered = await discoverNumbers();
         const to = body.to || discovered.to;
@@ -32,7 +33,13 @@ export const Route = createFileRoute("/api/mayday/place-call")({
         }
         try {
           const origin = new URL(request.url).origin;
-          const r = await placeMaydayCall({ to, from, origin, stateUrl: body.stateUrl });
+          const r = await placeMaydayCall({
+            to,
+            from,
+            origin,
+            stateUrl: body.stateUrl,
+            sendDigits: body.sendDigits,
+          });
           return Response.json({ ok: true, to, from, ...r });
         } catch (e) {
           return Response.json({ ok: false, error: (e as Error).message }, { status: 502 });
