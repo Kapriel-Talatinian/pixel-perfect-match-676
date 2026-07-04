@@ -1017,3 +1017,39 @@ function TwilioSettings({
   );
 }
 
+function RemoteShopBar({
+  url,
+  setUrl,
+  status,
+  watching,
+}: {
+  url: string;
+  setUrl: (v: string) => void;
+  status: string;
+  watching: boolean;
+}) {
+  const ok = status.startsWith("remote OK");
+  const down = status.startsWith("remote DOWN") || status.startsWith("remote error");
+  return (
+    <section className="panel mt-3 flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 ${watching ? (ok ? "bg-primary pulse-dot" : down ? "bg-danger pulse-dot" : "bg-warning") : "bg-muted-foreground/40"}`} />
+        <span className="text-mono text-[10px] uppercase tracking-widest text-muted-foreground">Vultr shop</span>
+      </div>
+      <label className="flex flex-1 items-center gap-2 text-mono text-xs">
+        <span className="w-20 shrink-0 text-muted-foreground">URL</span>
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value.trim())}
+          placeholder="http://192.248.185.175"
+          className="min-w-0 flex-1 border border-border bg-background/60 px-2.5 py-1.5 text-mono text-xs outline-none focus:border-primary"
+        />
+      </label>
+      <span className={`shrink-0 text-mono text-[11px] ${ok ? "text-primary" : down ? "text-danger" : "text-muted-foreground"}`}>
+        {watching ? (status || "polling…") : "watch disabled"}
+      </span>
+    </section>
+  );
+}
+
