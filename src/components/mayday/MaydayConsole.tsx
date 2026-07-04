@@ -346,7 +346,7 @@ function TopBar({
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-md">
       <div className="mx-auto grid max-w-[1600px] grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 sm:flex sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-md text-mono text-lg font-bold ${isBroken ? "bg-danger text-white glow-red" : "bg-primary text-primary-foreground glow-green"}`}>
+          <div className={`grid h-10 w-10 shrink-0 place-items-center text-mono text-lg font-bold ${isBroken ? "bg-danger text-white glow-red" : "bg-primary text-primary-foreground glow-green"}`}>
             M
           </div>
           <div className="min-w-0">
