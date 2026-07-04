@@ -866,3 +866,66 @@ function FooterMeta() {
     </footer>
   );
 }
+
+function TwilioSettings({
+  toNumber,
+  setToNumber,
+  fromNumber,
+  setFromNumber,
+  realCallEnabled,
+  setRealCallEnabled,
+  callStatus,
+}: {
+  toNumber: string;
+  setToNumber: (v: string) => void;
+  fromNumber: string;
+  setFromNumber: (v: string) => void;
+  realCallEnabled: boolean;
+  setRealCallEnabled: (v: boolean) => void;
+  callStatus: string;
+}) {
+  const ready = /^\+\d{6,15}$/.test(toNumber) && /^\+\d{6,15}$/.test(fromNumber);
+  return (
+    <section className="panel flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${realCallEnabled ? (ready ? "bg-primary pulse-dot" : "bg-warning") : "bg-muted-foreground/40"}`} />
+        <span className="text-mono text-[10px] uppercase tracking-widest text-muted-foreground">Twilio call</span>
+      </div>
+      <label className="flex flex-1 items-center gap-2 text-mono text-xs">
+        <span className="w-20 shrink-0 text-muted-foreground">To (you)</span>
+        <input
+          type="tel"
+          value={toNumber}
+          onChange={(e) => setToNumber(e.target.value.trim())}
+          placeholder="+33612345678"
+          className="min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2.5 py-1.5 text-mono text-xs outline-none focus:border-primary"
+        />
+      </label>
+      <label className="flex flex-1 items-center gap-2 text-mono text-xs">
+        <span className="w-20 shrink-0 text-muted-foreground">From (Twilio)</span>
+        <input
+          type="tel"
+          value={fromNumber}
+          onChange={(e) => setFromNumber(e.target.value.trim())}
+          placeholder="+15558675310"
+          className="min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2.5 py-1.5 text-mono text-xs outline-none focus:border-primary"
+        />
+      </label>
+      <label className="flex shrink-0 items-center gap-2 text-mono text-xs">
+        <input
+          type="checkbox"
+          checked={realCallEnabled}
+          onChange={(e) => setRealCallEnabled(e.target.checked)}
+          className="h-4 w-4 accent-primary"
+        />
+        <span className={realCallEnabled ? "text-primary" : "text-muted-foreground"}>
+          {realCallEnabled ? "LIVE" : "sim"}
+        </span>
+      </label>
+      {callStatus && (
+        <span className="shrink-0 text-mono text-[11px] text-foreground">{callStatus}</span>
+      )}
+    </section>
+  );
+}
+
