@@ -970,6 +970,17 @@ function TwilioSettings({
           {realCallEnabled ? "LIVE" : "sim"}
         </span>
       </label>
+      <label className="flex shrink-0 items-center gap-2 border-l border-border/60 pl-3 text-mono text-xs">
+        <input
+          type="checkbox"
+          checked={watchShop}
+          onChange={(e) => setWatchShop(e.target.checked)}
+          className="h-4 w-4 accent-primary"
+        />
+        <span className={watchShop ? "text-primary" : "text-muted-foreground"}>
+          Watch shop
+        </span>
+      </label>
       {callStatus && (
         <span className="shrink-0 text-mono text-[11px] text-foreground">{callStatus}</span>
       )}
