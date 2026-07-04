@@ -172,6 +172,9 @@ export function MaydayConsole() {
   const remoteUrlRef = useRef(remoteShopUrl);
   const remoteTokenRef = useRef(remoteShopToken);
   const incidentRefRef = useRef(incidentRef);
+  // Synchronous re-entry lock: prevents a double Twilio call when the effect
+  // re-runs before setTwilioId commits (StrictMode / rapid re-renders).
+  const callPlacingRef = useRef(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem("mayday.to", toNumber);
@@ -455,6 +458,7 @@ export function MaydayConsole() {
       runStartedAtRef.current = Date.now();
       setPhase("alert");
       setTwilioId(null);
+      callPlacingRef.current = false;
       setCallStatus(reason ?? "");
       setIncidentRef(makeIncidentId());
       if (source === "manual") breakShops();
@@ -519,6 +523,7 @@ export function MaydayConsole() {
             },
           ]);
           setTwilioId(null); // allow a fresh real call
+          callPlacingRef.current = false;
           setRinging(true);
         }, 20_000);
         timeoutsRef.current.push(id);
@@ -566,13 +571,14 @@ export function MaydayConsole() {
     setBriefIndex(0);
     setPhase("idle");
     setTwilioId(null);
+    callPlacingRef.current = false;
     setCallStatus("");
     setIncidentRef("");
   }, [clearTimers, repairShops]);
 
   // Trigger real Twilio call the moment the script starts ringing
   useEffect(() => {
-    if (!ringing || !realCallEnabled || twilioId) return;
+    if (!ringing || !realCallEnabled || twilioId || callPlacingRef.current) return;
     if (!toNumber || !fromNumber) {
       setCallStatus("Set your phone + Twilio number in CONFIG to enable the real call");
       return;
@@ -585,6 +591,9 @@ export function MaydayConsole() {
       );
       return;
     }
+    // Lock synchronously so a re-render can't fire a second call before the
+    // async startCall resolves and setTwilioId commits.
+    callPlacingRef.current = true;
     setCallStatus("Placing Twilio call…");
     startCall({
       data: {
@@ -598,9 +607,10 @@ export function MaydayConsole() {
         setTwilioId(r.id);
         setCallStatus(`Ringing ${toNumber} · SID …${(r.callSid ?? "").slice(-6) || "?"}`);
       })
-      .catch((e: unknown) =>
-        setCallStatus(`Call failed: ${(e as Error)?.message ?? "call failed"}`),
-      );
+      .catch((e: unknown) => {
+        callPlacingRef.current = false; // allow a retry only on failure
+        setCallStatus(`Call failed: ${(e as Error)?.message ?? "call failed"}`);
+      });
   }, [ringing, realCallEnabled, toNumber, fromNumber, twilioId, startCall]);
 
   // Poll for the caller's decision (DTMF or speech), mirror it into the UI
