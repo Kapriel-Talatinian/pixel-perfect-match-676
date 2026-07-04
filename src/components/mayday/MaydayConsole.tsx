@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import {
   AFTER_APPROVAL,
   INCIDENT_ID,
@@ -10,6 +11,7 @@ import {
   type ScriptStep,
   type TimelineEvent,
 } from "@/lib/mayday/script";
+import { getIncidentDecision, startMaydayCall } from "@/lib/mayday/call.functions";
 
 const GREEN_METRICS: Metrics = { error_rate: 0.006, p95_ms: 168, rps: 58, green: true };
 
