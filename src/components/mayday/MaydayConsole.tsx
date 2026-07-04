@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import {
   AFTER_APPROVAL,
   INCIDENT_ID,
@@ -10,6 +11,7 @@ import {
   type ScriptStep,
   type TimelineEvent,
 } from "@/lib/mayday/script";
+import { getIncidentDecision, startMaydayCall } from "@/lib/mayday/call.functions";
 
 const GREEN_METRICS: Metrics = { error_rate: 0.006, p95_ms: 168, rps: 58, green: true };
 
@@ -49,8 +51,24 @@ export function MaydayConsole() {
   const [showPostmortem, setShowPostmortem] = useState(false);
   const [callAnswered, setCallAnswered] = useState(false);
   const [briefIndex, setBriefIndex] = useState(0);
+
+  // --- REAL Twilio call state ---
+  const [toNumber, setToNumber] = useState<string>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.to")) || "");
+  const [fromNumber, setFromNumber] = useState<string>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.from")) || "");
+  const [realCallEnabled, setRealCallEnabled] = useState<boolean>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.real") === "1") || false);
+  const [callStatus, setCallStatus] = useState<string>("");
+  const [incidentId, setIncidentId] = useState<string | null>(null);
+
   const timeoutsRef = useRef<number[]>([]);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const pollRef = useRef<number | null>(null);
+
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.to", toNumber); }, [toNumber]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.from", fromNumber); }, [fromNumber]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.real", realCallEnabled ? "1" : "0"); }, [realCallEnabled]);
+
+  const startCall = useServerFn(startMaydayCall);
+  const pollDecision = useServerFn(getIncidentDecision);
 
   const clearTimers = useCallback(() => {
     timeoutsRef.current.forEach((t) => clearTimeout(t));
@@ -120,6 +138,8 @@ export function MaydayConsole() {
     setEuroLost(0);
     setRunStartedAt(Date.now());
     setPhase("alert");
+    setIncidentId(null);
+    setCallStatus("");
     runScript(SCRIPT, () => setPhase("awaiting_approval"));
   }, [clearTimers, runScript]);
 
@@ -173,6 +193,7 @@ export function MaydayConsole() {
 
   const reset = useCallback(() => {
     clearTimers();
+    if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
     setEvents([]);
     setMetrics(GREEN_METRICS);
     setRinging(false);
@@ -183,7 +204,45 @@ export function MaydayConsole() {
     setCallAnswered(false);
     setBriefIndex(0);
     setPhase("idle");
+    setIncidentId(null);
+    setCallStatus("");
   }, [clearTimers]);
+
+  // Trigger real Twilio call the moment the script starts ringing
+  useEffect(() => {
+    if (!ringing || !realCallEnabled || incidentId) return;
+    if (!toNumber || !fromNumber) {
+      setCallStatus("⚠ enter your phone + Twilio From number to enable real call");
+      return;
+    }
+    setCallStatus("📡 placing Twilio call…");
+    startCall({ data: { to: toNumber, from: fromNumber, brief: PHONE_BRIEF } })
+      .then((r) => {
+        setIncidentId(r.id);
+        setCallStatus(`📞 ringing ${toNumber} · SID ${(r.callSid ?? "").slice(-6) || "?"}`);
+      })
+      .catch((e: unknown) => setCallStatus(`❌ ${(e as Error)?.message ?? "call failed"}`));
+  }, [ringing, realCallEnabled, toNumber, fromNumber, incidentId, startCall]);
+
+  // Poll for the caller's DTMF decision, mirror it into the UI
+  useEffect(() => {
+    if (!incidentId) return;
+    if (phase === "resolved" || phase === "rejected" || phase === "idle") return;
+    const id = window.setInterval(async () => {
+      try {
+        const r = await pollDecision({ data: { id: incidentId } });
+        if (r.decision) {
+          window.clearInterval(id);
+          pollRef.current = null;
+          setCallStatus(`✅ phone reply: ${r.decision.toUpperCase()}`);
+          if (!callAnswered) setCallAnswered(true);
+          decide(r.decision);
+        }
+      } catch { /* keep polling */ }
+    }, 1500);
+    pollRef.current = id;
+    return () => { window.clearInterval(id); pollRef.current = null; };
+  }, [incidentId, phase, pollDecision, decide, callAnswered]);
 
   const canBreak = phase === "idle" || phase === "resolved" || phase === "rejected";
   const isBroken = !metrics.green;
@@ -206,7 +265,16 @@ export function MaydayConsole() {
       />
 
       <main className="mx-auto max-w-[1600px] px-4 pb-16 pt-6">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)_360px]">
+        <TwilioSettings
+          toNumber={toNumber}
+          setToNumber={setToNumber}
+          fromNumber={fromNumber}
+          setFromNumber={setFromNumber}
+          realCallEnabled={realCallEnabled}
+          setRealCallEnabled={setRealCallEnabled}
+          callStatus={callStatus}
+        />
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)_360px]">
           <ShopPanel metrics={metrics} phase={phase} />
           <AgentTimeline events={events} phase={phase} ref={timelineRef} />
           <PhonePanel
@@ -217,6 +285,8 @@ export function MaydayConsole() {
             briefDone={callAnswered && briefIndex >= PHONE_BRIEF.length}
             onAnswer={answerCall}
             onDecide={decide}
+            realCallEnabled={realCallEnabled}
+            callStatus={callStatus}
           />
         </div>
 
@@ -550,6 +620,8 @@ function PhonePanel({
   briefDone,
   onAnswer,
   onDecide,
+  realCallEnabled,
+  callStatus,
 }: {
   ringing: boolean;
   phase: Phase;
@@ -558,6 +630,8 @@ function PhonePanel({
   briefDone: boolean;
   onAnswer: () => void;
   onDecide: (choice: "go" | "rollback" | "wait") => void;
+  realCallEnabled: boolean;
+  callStatus: string;
 }) {
   const canDecide = callAnswered && briefDone;
 
@@ -569,8 +643,15 @@ function PhonePanel({
           <span className="text-mono text-xs uppercase tracking-widest text-muted-foreground">voice</span>
           <span className="text-mono text-xs">:8300</span>
         </div>
-        <span className="text-mono text-[10px] uppercase tracking-widest text-muted-foreground">Gradium · Twilio</span>
+        <span className={`text-mono text-[10px] uppercase tracking-widest ${realCallEnabled ? "text-primary" : "text-muted-foreground"}`}>
+          {realCallEnabled ? "● LIVE Twilio" : "SIMULATION"}
+        </span>
       </div>
+      {callStatus && (
+        <div className="border-b border-border/60 bg-background/40 px-4 py-2 text-mono text-[11px] text-foreground">
+          {callStatus}
+        </div>
+      )}
 
       <div className="flex flex-col items-center gap-4 p-6">
         <div className={`relative grid h-32 w-32 place-items-center rounded-full border-2 ${ringing ? "border-warning glow-red" : callAnswered ? "border-success glow-green" : "border-border"}`}>
@@ -785,3 +866,66 @@ function FooterMeta() {
     </footer>
   );
 }
+
+function TwilioSettings({
+  toNumber,
+  setToNumber,
+  fromNumber,
+  setFromNumber,
+  realCallEnabled,
+  setRealCallEnabled,
+  callStatus,
+}: {
+  toNumber: string;
+  setToNumber: (v: string) => void;
+  fromNumber: string;
+  setFromNumber: (v: string) => void;
+  realCallEnabled: boolean;
+  setRealCallEnabled: (v: boolean) => void;
+  callStatus: string;
+}) {
+  const ready = /^\+\d{6,15}$/.test(toNumber) && /^\+\d{6,15}$/.test(fromNumber);
+  return (
+    <section className="panel flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${realCallEnabled ? (ready ? "bg-primary pulse-dot" : "bg-warning") : "bg-muted-foreground/40"}`} />
+        <span className="text-mono text-[10px] uppercase tracking-widest text-muted-foreground">Twilio call</span>
+      </div>
+      <label className="flex flex-1 items-center gap-2 text-mono text-xs">
+        <span className="w-20 shrink-0 text-muted-foreground">To (you)</span>
+        <input
+          type="tel"
+          value={toNumber}
+          onChange={(e) => setToNumber(e.target.value.trim())}
+          placeholder="+33612345678"
+          className="min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2.5 py-1.5 text-mono text-xs outline-none focus:border-primary"
+        />
+      </label>
+      <label className="flex flex-1 items-center gap-2 text-mono text-xs">
+        <span className="w-20 shrink-0 text-muted-foreground">From (Twilio)</span>
+        <input
+          type="tel"
+          value={fromNumber}
+          onChange={(e) => setFromNumber(e.target.value.trim())}
+          placeholder="+15558675310"
+          className="min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2.5 py-1.5 text-mono text-xs outline-none focus:border-primary"
+        />
+      </label>
+      <label className="flex shrink-0 items-center gap-2 text-mono text-xs">
+        <input
+          type="checkbox"
+          checked={realCallEnabled}
+          onChange={(e) => setRealCallEnabled(e.target.checked)}
+          className="h-4 w-4 accent-primary"
+        />
+        <span className={realCallEnabled ? "text-primary" : "text-muted-foreground"}>
+          {realCallEnabled ? "LIVE" : "sim"}
+        </span>
+      </label>
+      {callStatus && (
+        <span className="shrink-0 text-mono text-[11px] text-foreground">{callStatus}</span>
+      )}
+    </section>
+  );
+}
+
