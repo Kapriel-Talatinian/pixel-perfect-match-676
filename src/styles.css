@@ -5,10 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -40,66 +40,62 @@
 
 :root {
   --radius: 0px;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* Deep war-room dark */
-  --background: oklch(0.15 0.02 260);
-  --foreground: oklch(0.96 0.01 250);
-  --card: oklch(0.19 0.025 260);
-  --card-foreground: oklch(0.96 0.01 250);
-  --popover: oklch(0.19 0.025 260);
-  --popover-foreground: oklch(0.96 0.01 250);
-  --primary: oklch(0.72 0.19 145); /* neon green */
-  --primary-foreground: oklch(0.15 0.02 260);
-  --secondary: oklch(0.28 0.03 260);
-  --secondary-foreground: oklch(0.96 0.01 250);
-  --muted: oklch(0.24 0.02 260);
-  --muted-foreground: oklch(0.68 0.02 260);
-  --accent: oklch(0.72 0.19 145);
-  --accent-foreground: oklch(0.15 0.02 260);
-  --destructive: oklch(0.62 0.24 25);
-  --destructive-foreground: oklch(0.98 0.01 250);
-  --border: oklch(0.28 0.03 260);
-  --input: oklch(0.24 0.02 260);
-  --ring: oklch(0.72 0.19 145);
+  /* Ink on paper — technical sheet */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.16 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.16 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.16 0 0);
+  --primary: oklch(0.16 0 0);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.94 0 0);
+  --secondary-foreground: oklch(0.16 0 0);
+  --muted: oklch(0.965 0 0);
+  --muted-foreground: oklch(0.46 0 0);
+  --accent: oklch(0.16 0 0);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.55 0.22 29);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.16 0 0);
+  --input: oklch(0.16 0 0);
+  --ring: oklch(0.16 0 0);
 
-  --success: oklch(0.72 0.19 145);
-  --warning: oklch(0.82 0.17 85);
-  --danger: oklch(0.65 0.26 25);
-  --neon: oklch(0.78 0.17 190);
-  --panel: oklch(0.19 0.025 260);
-  --panel-border: oklch(0.28 0.03 260);
-}
-
-.dark {
-  --background: oklch(0.15 0.02 260);
-  --foreground: oklch(0.96 0.01 250);
-  --card: oklch(0.19 0.025 260);
-  --card-foreground: oklch(0.96 0.01 250);
-  --border: oklch(0.28 0.03 260);
+  --success: oklch(0.52 0.14 150);
+  --warning: oklch(0.56 0.13 70);
+  --danger: oklch(0.55 0.22 29);
+  --neon: oklch(0.45 0.16 255);
+  --panel: oklch(1 0 0);
+  --panel-border: oklch(0.16 0 0);
 }
 
 @layer base {
   * { border-color: var(--color-border); }
   html, body {
-    background: radial-gradient(ellipse at top, oklch(0.19 0.03 265) 0%, oklch(0.13 0.02 260) 100%);
+    background: var(--background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     min-height: 100vh;
   }
+  ::selection { background: var(--foreground); color: var(--background); }
 }
 
 @utility text-mono { font-family: var(--font-mono); }
+
+/* Flat panel: paper + 1px ink border. No blur, no radius, no shadow. */
 @utility panel {
-  background-color: color-mix(in oklch, var(--panel) 92%, transparent);
+  background-color: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 0;
-  backdrop-filter: blur(8px);
 }
-@utility glow-green { box-shadow: 0 0 24px -6px var(--success), inset 0 0 0 1px color-mix(in oklch, var(--success) 40%, transparent); }
-@utility glow-red { box-shadow: 0 0 32px -4px var(--danger), inset 0 0 0 1px color-mix(in oklch, var(--danger) 60%, transparent); }
-@utility glow-neon { box-shadow: 0 0 24px -6px var(--neon); }
+
+/* Hard offset blocks — the one allowed "effect". Flat color, zero blur. */
+@utility glow-green { box-shadow: 4px 4px 0 0 var(--success); }
+@utility glow-red { box-shadow: 4px 4px 0 0 var(--danger); }
+@utility glow-neon { box-shadow: 4px 4px 0 0 var(--neon); }
 
 @keyframes ring-shake {
   0%, 100% { transform: rotate(0); }
@@ -109,19 +105,27 @@
 @utility ring-shake { animation: ring-shake 0.5s ease-in-out infinite; }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.4); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
 }
-@utility pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
+@utility pulse-dot { animation: pulse-dot 1.2s steps(2, end) infinite; }
 
 @keyframes ticker {
   from { background-position: 0 0; }
   to { background-position: 40px 0; }
 }
 @utility scan-lines {
-  background-image: repeating-linear-gradient(90deg, transparent 0 20px, color-mix(in oklch, var(--foreground) 4%, transparent) 20px 21px);
-  animation: ticker 2s linear infinite;
+  background-image: repeating-linear-gradient(90deg, transparent 0 20px, color-mix(in oklch, var(--foreground) 3%, transparent) 20px 21px);
 }
 
 @keyframes blink { 50% { opacity: 0; } }
 @utility caret-blink { animation: blink 1s step-end infinite; }
+
+/* Dotted rule — technical-sheet separator */
+@utility rule-dotted {
+  background-image: linear-gradient(90deg, var(--foreground) 25%, transparent 25%);
+  background-size: 4px 1px;
+  background-repeat: repeat-x;
+  background-position: 0 50%;
+  height: 1px;
+}
