@@ -956,7 +956,22 @@ function PhonePanel({
   onDecide: (choice: "go" | "rollback" | "wait") => void;
   realCallEnabled: boolean; callStatus: string; toNumber: string;
 }) {
-  const canDecide = callAnswered && briefDone;
+  const awaiting = phase === "awaiting_approval" || phase === "ringing";
+  const canDecide = callAnswered && briefDone && awaiting;
+
+  const statusLine = (() => {
+    if (phase === "resolved") return "call ended · resolved";
+    if (phase === "rejected") return "call ended · human took over";
+    if (phase === "fixing" || phase === "verifying") return "call ended · GO received";
+    if (callAnswered && !briefDone) return "MAYDAY speaking…";
+    if (callAnswered && briefDone) return "awaiting your reply";
+    if (ringing) return "ringing · answer the call";
+    if (phase === "calling") return "dialing…";
+    if (phase === "investigating" || phase === "deciding") return "not called yet";
+    if (phase === "alert") return "—";
+    if (phase === "awaiting_approval") return "awaiting approval";
+    return "standing by";
+  })();
 
   return (
     <section className="panel flex flex-col overflow-hidden">
@@ -994,20 +1009,7 @@ function PhonePanel({
               <Wifi className="h-3 w-3" /> {ringing || callAnswered ? "Incoming · MAYDAY" : "on-call line"}
             </div>
             <div className="mt-0.5 text-mono text-base font-bold tabular-nums">{maskPhone(toNumber)}</div>
-            <div className="mt-1 text-mono text-[11px] text-muted-foreground">
-              {phase === "idle" && "standing by"}
-              {phase === "alert" && "—"}
-              {(phase === "investigating" || phase === "deciding") && "not called yet"}
-              {phase === "calling" && "dialing…"}
-              {(phase === "ringing" || phase === "awaiting_approval") && ringing && !callAnswered && "ringing · answer the call"}
-              {callAnswered && !briefDone && "MAYDAY speaking…"}
-              {callAnswered && briefDone && "awaiting your reply"}
-              {phase === "awaiting_approval" && !ringing && !callAnswered && "awaiting approval"}
-              {phase === "fixing" && "call ended · GO received"}
-              {phase === "verifying" && "call ended · GO received"}
-              {phase === "resolved" && "call ended · resolved"}
-              {phase === "rejected" && "call ended · human took over"}
-            </div>
+            <div className="mt-1 text-mono text-[11px] text-muted-foreground">{statusLine}</div>
           </div>
         </div>
 
@@ -1111,7 +1113,7 @@ function PostmortemPanel({
 
 // Minimal, safe markdown-ish renderer for the post-mortem
 function MarkdownLite({ source }: { source: string }) {
-  const blocks = source.split(/\n\n+/);
+  const blocks = source.split(/\n\n+/).map((b) => b.trim()).filter(Boolean);
   return (
     <div className="space-y-3">
       {blocks.map((b, i) => {

@@ -77,6 +77,7 @@ export function buildPostmortem(opts: { incidentId: string; durationSecs: number
 **Summary.** Checkout on the shop service was unavailable for ${fmtDuration(durationSecs)}. Auto-detected by the MAYDAY watchdog; auto-remediated by MAYDAY with on-call phone approval.
 
 ## Timeline
+
 - **T+0s** — error_rate crossed 0.20 threshold (peak 0.41). Incident opened.
 - **T+2s** — MAYDAY ran 4 tools, retrieved 3 documents.
 - **T+9s** — Decision: revert commit \`abc123\` (confidence 0.92).
@@ -85,20 +86,25 @@ export function buildPostmortem(opts: { incidentId: string; durationSecs: number
 - **T+${durationSecs}s** — Redeploy verified. error_rate back to baseline.
 
 ## Root cause
+
 Commit \`abc123\` edited \`shop/settings.py\` and pointed \`INVENTORY_SERVICE_URL\` to port \`:9999\` — no service listens there. \`/checkout\` began returning 500 on every stock lookup within 30s.
 
 ## Resolution
+
 \`git revert --no-edit abc123\` → push to \`main\` → CI redeploy. Verified via live health probe: error_rate < 0.01, checkout 200.
 
 ## SLA impact
+
 Duration: **${fmtDuration(durationSecs)}**. Cost per minute per \`sla.md\`: **€${SLA_EUR_PER_MIN}**. Total impact: **€${euroLost.toFixed(0)}**. Within monthly error budget (0.1%).
 
 ## Evidence & citations
+
 - \`runbooks/RB-01-config-regression.md\` — §3 Standard remediation: *"config regressions: revert the offending commit; do not hotfix under incident."*
 - \`incidents/INC-2025-014.md\` — §Root cause: identical port-misconfiguration pattern, same runbook applied.
 - \`sla.md\` — §Checkout availability: 99.9% target, €150/min downtime cost.
 
 ## Follow-ups
+
 1. Add a startup smoke test in \`shop/\` that fails fast if \`INVENTORY_SERVICE_URL\` is not reachable.
 2. Add pre-merge check flagging config diffs to \`settings.py\` for a second reviewer.
 
