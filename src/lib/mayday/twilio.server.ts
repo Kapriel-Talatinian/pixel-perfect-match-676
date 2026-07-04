@@ -35,13 +35,17 @@ export async function discoverNumbers(): Promise<{ from?: string; to?: string }>
   const headers = { Authorization: twilioBasicAuth(creds) };
   const acct = `${creds.base}/2010-04-01/Accounts/${creds.accountSid}`;
   const out: { from?: string; to?: string; at: number } = { at: Date.now() };
+  // A well-formed international number has no national trunk "0" right after
+  // the country code. "+330688903650" (FR +33 then a stray 0) is unroutable —
+  // prefer any verified ID that is properly formed.
+  const wellFormed = (n: string) => /^\+[1-9]\d{6,14}$/.test(n) && !/^\+33?0/.test(n);
   try {
     const [numsRes, idsRes] = await Promise.all([
       fetch(`${acct}/IncomingPhoneNumbers.json?PageSize=1`, {
         headers,
         signal: AbortSignal.timeout(4000),
       }),
-      fetch(`${acct}/OutgoingCallerIds.json?PageSize=1`, {
+      fetch(`${acct}/OutgoingCallerIds.json?PageSize=20`, {
         headers,
         signal: AbortSignal.timeout(4000),
       }),
@@ -53,10 +57,9 @@ export async function discoverNumbers(): Promise<{ from?: string; to?: string }>
     }
     if (idsRes.ok) {
       const j = (await idsRes.json()) as { outgoing_caller_ids?: { phone_number: string }[] };
-      // Keep the EXACT stored format — trial accounts may only call the
-      // verified string verbatim (e.g. "+330688903650", odd zero included).
-      const n = j.outgoing_caller_ids?.[0]?.phone_number;
-      if (n) out.to = n;
+      const ids = (j.outgoing_caller_ids ?? []).map((x) => x.phone_number).filter(Boolean);
+      // Prefer a properly-formed verified caller ID; fall back to the first one.
+      out.to = ids.find(wellFormed) ?? ids[0];
     }
   } catch {
     /* discovery is best-effort */
