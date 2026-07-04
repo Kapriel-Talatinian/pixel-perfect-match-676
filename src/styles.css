@@ -94,7 +94,7 @@
 @utility panel {
   background-color: color-mix(in oklch, var(--panel) 92%, transparent);
   border: 1px solid var(--panel-border);
-  border-radius: var(--radius-lg);
+  border-radius: 0;
   backdrop-filter: blur(8px);
 }
 @utility glow-green { box-shadow: 0 0 24px -6px var(--success), inset 0 0 0 1px color-mix(in oklch, var(--success) 40%, transparent); }
