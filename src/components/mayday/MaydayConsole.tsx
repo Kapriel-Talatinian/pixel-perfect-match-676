@@ -5,7 +5,6 @@ import {
   RotateCcw,
   Phone,
   PhoneCall,
-  PhoneIncoming,
   Mic,
   FileText,
   Wifi,
@@ -14,6 +13,9 @@ import {
   ArrowUpRight,
   Settings2,
   X,
+  Check,
+  Signal,
+  BatteryFull,
 } from "lucide-react";
 import {
   AFTER_APPROVAL,
@@ -793,10 +795,11 @@ export function MaydayConsole() {
         />
       )}
 
-      <main className="mx-auto max-w-[1440px] px-4 pb-10 pt-5 lg:px-6">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_400px]">
-          <Timeline events={events} phase={phase} scrollRef={timelineRef} />
-          <div className="flex flex-col gap-4">
+      <main className="mx-auto max-w-[1600px] px-4 pb-12 pt-6 lg:px-8">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px] xl:gap-10 xl:grid-cols-[minmax(0,1fr)_440px]">
+          {/* Left — the autonomous agent, thinking */}
+          <div className="order-2 flex flex-col gap-4 lg:order-1">
+            <Timeline events={events} phase={phase} scrollRef={timelineRef} />
             <ServicePanel
               metrics={metrics}
               phase={phase}
@@ -804,7 +807,11 @@ export function MaydayConsole() {
               remoteStatus={remoteStatus}
               watching={watchShop}
             />
-            <PhonePanel
+          </div>
+
+          {/* Right — it phones a human. The iPhone rings on the table. */}
+          <div className="order-1 lg:order-2 lg:sticky lg:top-24 lg:h-fit">
+            <IPhone15
               ringing={ringing}
               phase={phase}
               callAnswered={callAnswered}
@@ -816,6 +823,7 @@ export function MaydayConsole() {
               callStatus={callStatus}
               toNumber={toNumber}
               gradiumOn={voiceStatus?.gradium ?? false}
+              euroLost={euroLost}
             />
           </div>
         </div>
@@ -829,9 +837,11 @@ export function MaydayConsole() {
           />
         )}
 
-        <footer className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <footer className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           <span>MAYDAY · RAISE Summit 2026 · Vultr track</span>
-          <span>detect → investigate → decide → call → approve → fix → verify</span>
+          <span className="hidden sm:inline">
+            detect → investigate → decide → call → approve → fix → verify
+          </span>
           <span>Vultr · LiteLLM · Twilio · STAIPH</span>
         </footer>
       </main>
@@ -1491,9 +1501,28 @@ function MetricCell({
   );
 }
 
-// --- Phone panel ----------------------------------------------------------------
+// --- iPhone 15 mockup (keynote centerpiece) ----------------------------------
+// The autonomous agent phones a human. This is that phone — ringing on the
+// table, live. It mirrors the real Twilio call state: standby → incoming →
+// connected → keypad → resolved.
 
-function PhonePanel({
+function StatusBar({ dark }: { dark: boolean }) {
+  const c = dark ? "text-white" : "text-foreground";
+  return (
+    <div
+      className={`absolute inset-x-0 top-0 z-20 flex items-center justify-between px-7 pt-3.5 ${c}`}
+    >
+      <span className="text-[13px] font-semibold tabular-nums">9:41</span>
+      <div className="flex items-center gap-1.5">
+        <Signal className="h-3.5 w-3.5" strokeWidth={2.5} />
+        <Wifi className="h-3.5 w-3.5" strokeWidth={2.5} />
+        <BatteryFull className="h-4 w-4" strokeWidth={2} />
+      </div>
+    </div>
+  );
+}
+
+function IPhone15({
   ringing,
   phase,
   callAnswered,
@@ -1505,6 +1534,7 @@ function PhonePanel({
   callStatus,
   toNumber,
   gradiumOn,
+  euroLost,
 }: {
   ringing: boolean;
   phase: Phase;
@@ -1517,178 +1547,262 @@ function PhonePanel({
   callStatus: string;
   toNumber: string;
   gradiumOn: boolean;
+  euroLost: number;
 }) {
   const awaiting = phase === "awaiting_approval" || phase === "ringing";
   const canDecide = callAnswered && briefDone && awaiting;
 
-  const statusLine = (() => {
-    if (phase === "resolved") return "call ended · resolved";
-    if (phase === "rejected") return "call ended · human took over";
-    if (phase === "fixing" || phase === "verifying") return "call ended · GO received";
-    if (callAnswered && !briefDone) return "● connected — MAYDAY speaking…";
-    if (callAnswered && briefDone) return "● connected — awaiting your reply";
-    if (ringing)
-      return realCallEnabled
-        ? "ringing your phone — pick up to connect"
-        : "ringing · answer the call";
-    if (phase === "calling") return "dialing…";
-    if (phase === "investigating" || phase === "deciding") return "not called yet";
-    if (phase === "alert") return "—";
-    if (phase === "awaiting_approval") return "awaiting approval";
-    return "standing by";
-  })();
+  // Call timer — starts the moment the on-call picks up.
+  const [callSecs, setCallSecs] = useState(0);
+  useEffect(() => {
+    if (!callAnswered || phase === "resolved" || phase === "rejected") return;
+    const t0 = Date.now();
+    setCallSecs(0);
+    const id = window.setInterval(() => setCallSecs(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => window.clearInterval(id);
+  }, [callAnswered, phase]);
+  const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  const state: "standby" | "dialing" | "incoming" | "connected" | "resolved" | "escalated" =
+    phase === "resolved"
+      ? "resolved"
+      : phase === "rejected"
+        ? "escalated"
+        : callAnswered
+          ? "connected"
+          : ringing
+            ? "incoming"
+            : phase === "calling"
+              ? "dialing"
+              : "standby";
+
+  const darkScreen = state === "incoming" || state === "dialing";
+  const screenBg = darkScreen ? "#0b0b0c" : "#ffffff";
 
   return (
-    <section className="panel flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <span
-            className={`h-2 w-2 ${ringing ? "bg-warning pulse-dot" : callAnswered ? "bg-success" : "bg-border"}`}
-          />
-          <span className="text-mono text-[11px] uppercase tracking-[0.2em]">03 · on-call</span>
-          <span className="text-mono text-[10px] text-muted-foreground">voice:8300</span>
-        </div>
-        <span
-          className={`text-mono text-[10px] uppercase tracking-widest ${realCallEnabled ? "" : "text-muted-foreground"}`}
+    <div className="mx-auto w-full" style={{ maxWidth: 340 }}>
+      {/* caption above the device */}
+      <div className="mb-3 flex items-center justify-center gap-2 text-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+        <span className={`h-1.5 w-1.5 ${realCallEnabled ? "bg-primary pulse-dot" : "bg-border"}`} />
+        {realCallEnabled
+          ? gradiumOn
+            ? "live · twilio + gradium"
+            : "live · twilio"
+          : "on-call line"}
+      </div>
+
+      {/* Titanium frame */}
+      <div
+        style={{
+          borderRadius: 58,
+          padding: 11,
+          background: "linear-gradient(155deg,#5a5a5e 0%,#2a2a2c 38%,#161618 100%)",
+          boxShadow: "0 40px 70px -30px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06) inset",
+        }}
+      >
+        <div
+          className="relative aspect-[9/19.5] w-full overflow-hidden"
+          style={{ borderRadius: 47, background: screenBg }}
         >
-          {realCallEnabled
-            ? gradiumOn
-              ? "■ LIVE · Twilio + Gradium"
-              : "■ LIVE · Twilio"
-            : "□ simulation"}
-        </span>
-      </div>
-
-      {callStatus && (
-        <div className="border-b border-border bg-muted px-4 py-2 text-mono text-[11px]">
-          {callStatus}
-        </div>
-      )}
-
-      <div className="border-b border-border px-5 py-5">
-        <div className="flex items-start gap-4">
+          {/* Dynamic Island */}
           <div
-            className={`relative grid h-14 w-14 shrink-0 place-items-center border ${
-              ringing ? "border-warning" : callAnswered ? "border-success" : "border-border"
-            }`}
-          >
-            {ringing && <span className="absolute inset-0 animate-ping bg-warning/20" />}
-            {callAnswered ? (
-              <PhoneCall className="h-6 w-6 text-success" />
-            ) : ringing ? (
-              <PhoneIncoming className="h-6 w-6 text-warning ring-shake" />
-            ) : (
-              <Phone className="h-6 w-6 text-muted-foreground" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 text-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-              <Wifi className="h-3 w-3" />{" "}
-              {ringing || callAnswered ? "Incoming · MAYDAY" : "on-call line"}
+            className="absolute left-1/2 top-3 z-30 -translate-x-1/2"
+            style={{ width: 108, height: 31, borderRadius: 18, background: "#000" }}
+          />
+          <StatusBar dark={darkScreen} />
+
+          {/* ---- screens ---- */}
+          {state === "standby" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
+              <div className="text-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                on-call
+              </div>
+              <div className="mt-2 text-[64px] font-bold leading-none tabular-nums">9:41</div>
+              <div className="mt-1 text-sm text-muted-foreground">Saturday, 5 July</div>
+              <div className="mt-10 grid h-11 w-11 place-items-center border border-border">
+                <Phone className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="mt-3 text-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+                MAYDAY · standing by
+              </div>
             </div>
-            <div className="mt-0.5 text-mono text-base font-bold tabular-nums">
-              {maskPhone(toNumber)}
+          )}
+
+          {(state === "dialing" || state === "incoming") && (
+            <div className="absolute inset-0 flex flex-col items-center justify-between px-8 pb-10 pt-24 text-center text-white">
+              <div>
+                <div className="text-[13px] uppercase tracking-[0.3em] text-white/50">
+                  {state === "dialing" ? "calling…" : "incident P1 · shop"}
+                </div>
+                <div className="mt-3 grid h-24 w-24 place-items-center justify-self-center rounded-full border border-white/15 bg-white/5 text-4xl font-bold">
+                  M
+                  {state === "incoming" && (
+                    <span className="absolute h-24 w-24 animate-ping rounded-full border border-white/20" />
+                  )}
+                </div>
+                <div className="mt-5 text-3xl font-bold">MAYDAY</div>
+                <div className="mt-1 text-[15px] text-white/60">
+                  {state === "dialing" ? "dialing on-call…" : "incoming call…"}
+                </div>
+                <div className="mt-1 text-mono text-[11px] text-white/40">
+                  €{euroLost.toFixed(0)} lost · €150/min
+                </div>
+              </div>
+
+              {state === "incoming" ? (
+                <div className="w-full">
+                  <div className="flex items-end justify-between px-2">
+                    <button
+                      onClick={() => onDecide("rollback")}
+                      className="flex flex-col items-center gap-2"
+                    >
+                      <span className="grid h-16 w-16 place-items-center rounded-full bg-danger text-white">
+                        <X className="h-7 w-7" strokeWidth={2.5} />
+                      </span>
+                      <span className="text-[12px] text-white/70">Decline</span>
+                    </button>
+                    <button onClick={onAnswer} className="flex flex-col items-center gap-2">
+                      <span className="grid h-16 w-16 place-items-center rounded-full bg-success text-white ring-shake">
+                        <PhoneCall className="h-7 w-7" strokeWidth={2.5} />
+                      </span>
+                      <span className="text-[12px] text-white/70">Accept</span>
+                    </button>
+                  </div>
+                  {realCallEnabled && (
+                    <div className="mt-5 text-mono text-[10px] uppercase tracking-widest text-white/40">
+                      answer your real phone →
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-mono text-[11px] uppercase tracking-widest text-white/40">
+                  Twilio · outbound
+                </div>
+              )}
             </div>
-            <div
-              className={`mt-1 text-mono text-[11px] ${callAnswered ? "font-bold text-success" : "text-muted-foreground"}`}
-            >
-              {statusLine}
+          )}
+
+          {(state === "connected" || state === "resolved" || state === "escalated") && (
+            <div className="absolute inset-0 flex flex-col px-6 pb-6 pt-20">
+              {/* header */}
+              <div className="text-center">
+                <div className="text-2xl font-bold">MAYDAY</div>
+                <div className="mt-1 flex items-center justify-center gap-2 text-mono text-[12px]">
+                  {state === "connected" ? (
+                    <>
+                      <span className="h-1.5 w-1.5 rounded-full bg-success pulse-dot" />
+                      <span className="text-success">connected · {mmss(callSecs)}</span>
+                    </>
+                  ) : state === "resolved" ? (
+                    <span className="text-success">call ended · resolved</span>
+                  ) : (
+                    <span className="text-danger">call ended · escalated</span>
+                  )}
+                </div>
+              </div>
+
+              {/* body */}
+              {state === "connected" ? (
+                <>
+                  <div className="mt-4 flex-1 overflow-y-auto">
+                    <div className="mb-1.5 flex items-center gap-1.5 text-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground">
+                      <Mic className="h-3 w-3" /> {gradiumOn ? "gradium voice" : "voice"}
+                    </div>
+                    <p className="text-[13px] leading-relaxed text-foreground">
+                      {briefText}
+                      {!briefDone && <span className="caret-blink">▊</span>}
+                    </p>
+                  </div>
+
+                  {canDecide ? (
+                    <div className="mt-3">
+                      <div className="mb-2 text-center text-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground">
+                        press the keypad
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <KeyBtn n="1" label="GO" tone="go" onClick={() => onDecide("go")} />
+                        <KeyBtn
+                          n="2"
+                          label="ROLL"
+                          tone="stop"
+                          onClick={() => onDecide("rollback")}
+                        />
+                        <KeyBtn n="3" label="WAIT" tone="mute" onClick={() => onDecide("wait")} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-3 py-3 text-center text-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      MAYDAY speaking…
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                  <div
+                    className={`grid h-16 w-16 place-items-center rounded-full ${state === "resolved" ? "bg-success" : "bg-danger"} text-white`}
+                  >
+                    {state === "resolved" ? (
+                      <Check className="h-8 w-8" strokeWidth={3} />
+                    ) : (
+                      <AlertTriangle className="h-7 w-7" strokeWidth={2.5} />
+                    )}
+                  </div>
+                  <div className="text-lg font-bold">
+                    {state === "resolved" ? "Incident resolved" : "Escalated to team"}
+                  </div>
+                  <div className="text-mono text-[11px] text-muted-foreground">
+                    {state === "resolved"
+                      ? `€${euroLost.toFixed(0)} lost · 0 humans at a keyboard`
+                      : "human takes the wheel"}
+                  </div>
+                </div>
+              )}
+
+              {/* end-call affordance */}
+              <div className="mt-4 flex justify-center">
+                <div className="grid h-12 w-12 place-items-center rounded-full bg-danger text-white">
+                  <Phone className="h-5 w-5 rotate-[135deg]" strokeWidth={2.5} />
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
-
-        {/* Keynote moment: the screen lights up the instant the human picks up. */}
-        {callAnswered && (
-          <div className="mt-4 flex items-center justify-center gap-2 border border-success bg-success/10 px-4 py-3 text-mono text-sm font-bold uppercase tracking-widest text-success">
-            <span className="h-2.5 w-2.5 rounded-full bg-success pulse-dot" />
-            Connected · on-call picked up
-          </div>
-        )}
-
-        {/* Simulation only: click to answer. In a real call, the phone answers. */}
-        {ringing && !callAnswered && !realCallEnabled && (
-          <button
-            onClick={onAnswer}
-            className="mt-4 flex w-full items-center justify-center gap-2 bg-warning px-4 py-3 text-sm font-bold text-white hover:brightness-110 active:scale-95"
-          >
-            <PhoneCall className="h-4 w-4" /> Answer call
-          </button>
-        )}
-        {ringing && !callAnswered && realCallEnabled && (
-          <div className="mt-4 flex w-full items-center justify-center gap-2 border border-warning px-4 py-3 text-sm font-bold text-warning">
-            <PhoneIncoming className="h-4 w-4 ring-shake" /> Ringing your phone…
-          </div>
-        )}
       </div>
 
-      {callAnswered && (
-        <div className="border-b border-border px-5 py-4">
-          <div className="mb-2 flex items-center justify-between text-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <Mic className="h-3 w-3" /> MAYDAY briefing
-            </span>
-            <span>TTS</span>
-          </div>
-          <p className="text-[13px] leading-relaxed">
-            {briefText}
-            {!briefDone && <span className="caret-blink">▊</span>}
-          </p>
-        </div>
-      )}
-
-      {canDecide && (
-        <div className="space-y-2.5 px-5 py-4">
-          <div className="text-center text-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-            {realCallEnabled ? "press on the phone keypad" : "your reply"}
-          </div>
-          <button
-            onClick={() => onDecide("go")}
-            className="flex w-full items-center justify-center gap-2 bg-primary px-4 py-3.5 text-base font-bold text-primary-foreground glow-green hover:brightness-110 active:scale-95"
-          >
-            <span className="grid h-6 w-6 place-items-center border border-primary-foreground text-sm">
-              1
-            </span>{" "}
-            GO — proceed
-          </button>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => onDecide("rollback")}
-              className="flex items-center justify-center gap-2 border border-danger px-3 py-2.5 text-sm font-semibold text-danger hover:bg-danger hover:text-white"
-            >
-              <span className="grid h-5 w-5 place-items-center border border-danger text-xs">
-                2
-              </span>{" "}
-              ROLLBACK
-            </button>
-            <button
-              onClick={() => onDecide("wait")}
-              className="flex items-center justify-center gap-2 border border-border px-3 py-2.5 text-sm font-semibold hover:bg-foreground hover:text-background"
-            >
-              <span className="grid h-5 w-5 place-items-center border border-border text-xs">
-                3
-              </span>{" "}
-              WAIT
-            </button>
-          </div>
-          <p className="text-center text-[10px] text-muted-foreground">
-            {realCallEnabled
-              ? "Trial account: press any key first for the preamble, then 1 / 2 / 3"
-              : "click a choice, or use the phone keypad on a real call"}
-          </p>
-        </div>
-      )}
-
-      <div className="mt-auto grid grid-cols-2 divide-x divide-border border-t border-border bg-muted text-mono text-[10px]">
-        <div className="px-4 py-2">
-          <div className="uppercase tracking-widest text-muted-foreground">safety</div>
-          <div>approval-gated</div>
-        </div>
-        <div className="px-4 py-2">
-          <div className="uppercase tracking-widest text-muted-foreground">audit</div>
-          <div>Ed25519-signed</div>
-        </div>
+      {/* status line under the phone */}
+      <div className="mt-3 min-h-[16px] text-center text-mono text-[11px] text-muted-foreground">
+        {callStatus || (realCallEnabled ? `on-call · ${maskPhone(toNumber)}` : "simulation mode")}
       </div>
-    </section>
+    </div>
+  );
+}
+
+function KeyBtn({
+  n,
+  label,
+  tone,
+  onClick,
+}: {
+  n: string;
+  label: string;
+  tone: "go" | "stop" | "mute";
+  onClick: () => void;
+}) {
+  const ring =
+    tone === "go"
+      ? "border-success text-success"
+      : tone === "stop"
+        ? "border-danger text-danger"
+        : "border-border";
+  return (
+    <button onClick={onClick} className="flex flex-col items-center gap-1">
+      <span
+        className={`grid h-16 w-16 place-items-center rounded-full border-2 ${ring} text-2xl font-bold transition active:scale-90`}
+      >
+        {n}
+      </span>
+      <span className="text-mono text-[10px] font-semibold uppercase tracking-widest">{label}</span>
+    </button>
   );
 }
 
