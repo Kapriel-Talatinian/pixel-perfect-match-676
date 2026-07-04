@@ -17,6 +17,7 @@ import { Route as ApiShopProductsRouteImport } from './routes/api/shop/products'
 import { Route as ApiShopHealthRouteImport } from './routes/api/shop/health'
 import { Route as ApiShopCheckoutRouteImport } from './routes/api/shop/checkout'
 import { Route as ApiMaydayPlaceCallRouteImport } from './routes/api/mayday/place-call'
+import { Route as ApiMaydayBrainTestRouteImport } from './routes/api/mayday/brain-test'
 import { Route as ApiShopAdminBreakRouteImport } from './routes/api/shop/admin.break'
 import { Route as ApiPublicMaydayVoiceResponseRouteImport } from './routes/api/public/mayday/voice-response'
 import { Route as ApiPublicMaydayTtsRouteImport } from './routes/api/public/mayday/tts'
@@ -65,6 +66,11 @@ const ApiMaydayPlaceCallRoute = ApiMaydayPlaceCallRouteImport.update({
   path: '/api/mayday/place-call',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMaydayBrainTestRoute = ApiMaydayBrainTestRouteImport.update({
+  id: '/api/mayday/brain-test',
+  path: '/api/mayday/brain-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiShopAdminBreakRoute = ApiShopAdminBreakRouteImport.update({
   id: '/api/shop/admin/break',
   path: '/api/shop/admin/break',
@@ -107,6 +113,7 @@ const ApiPublicMaydayGatherTestRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/shop': typeof ShopRoute
+  '/api/mayday/brain-test': typeof ApiMaydayBrainTestRoute
   '/api/mayday/place-call': typeof ApiMaydayPlaceCallRoute
   '/api/shop/checkout': typeof ApiShopCheckoutRoute
   '/api/shop/health': typeof ApiShopHealthRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/shop': typeof ShopRoute
+  '/api/mayday/brain-test': typeof ApiMaydayBrainTestRoute
   '/api/mayday/place-call': typeof ApiMaydayPlaceCallRoute
   '/api/shop/checkout': typeof ApiShopCheckoutRoute
   '/api/shop/health': typeof ApiShopHealthRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/shop': typeof ShopRoute
+  '/api/mayday/brain-test': typeof ApiMaydayBrainTestRoute
   '/api/mayday/place-call': typeof ApiMaydayPlaceCallRoute
   '/api/shop/checkout': typeof ApiShopCheckoutRoute
   '/api/shop/health': typeof ApiShopHealthRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/shop'
+    | '/api/mayday/brain-test'
     | '/api/mayday/place-call'
     | '/api/shop/checkout'
     | '/api/shop/health'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/shop'
+    | '/api/mayday/brain-test'
     | '/api/mayday/place-call'
     | '/api/shop/checkout'
     | '/api/shop/health'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/shop'
+    | '/api/mayday/brain-test'
     | '/api/mayday/place-call'
     | '/api/shop/checkout'
     | '/api/shop/health'
@@ -213,6 +225,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ShopRoute: typeof ShopRoute
+  ApiMaydayBrainTestRoute: typeof ApiMaydayBrainTestRoute
   ApiMaydayPlaceCallRoute: typeof ApiMaydayPlaceCallRoute
   ApiShopCheckoutRoute: typeof ApiShopCheckoutRoute
   ApiShopHealthRoute: typeof ApiShopHealthRoute
@@ -286,6 +299,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMaydayPlaceCallRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mayday/brain-test': {
+      id: '/api/mayday/brain-test'
+      path: '/api/mayday/brain-test'
+      fullPath: '/api/mayday/brain-test'
+      preLoaderRoute: typeof ApiMaydayBrainTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/shop/admin/break': {
       id: '/api/shop/admin/break'
       path: '/api/shop/admin/break'
@@ -341,6 +361,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ShopRoute: ShopRoute,
+  ApiMaydayBrainTestRoute: ApiMaydayBrainTestRoute,
   ApiMaydayPlaceCallRoute: ApiMaydayPlaceCallRoute,
   ApiShopCheckoutRoute: ApiShopCheckoutRoute,
   ApiShopHealthRoute: ApiShopHealthRoute,

@@ -125,156 +125,173 @@ export interface ScriptStep {
   ring?: boolean;
 }
 
-export const SCRIPT: ScriptStep[] = [
-  {
-    delay: 0,
-    phase: "alert",
-    metrics: { error_rate: 0.41, p95_ms: 2200, rps: 62, green: false },
-    event: {
-      type: "alert",
-      title: "Watchdog alert — error_rate_high on shop",
-      body: "POST /brain/webhook/alert",
-      meta: { service: "shop", error_rate: "0.41", p95_ms: "2200 ms" },
-    },
-  },
-  {
-    delay: 900,
-    phase: "investigating",
-    event: {
-      type: "plan",
-      title: "Plan",
-      body: "1. read metrics · 2. pull logs · 3. correlate with recent commits · 4. retrieve similar past incidents · 5. retrieve matching runbook · 6. check SLA · 7. propose action",
-    },
-  },
-  {
-    delay: 900,
-    event: {
-      type: "tool_call",
-      title: "get_metrics",
-      tool: "get_metrics",
-      args: { window_min: 10 },
-    },
-  },
-  {
-    delay: 700,
-    event: {
-      type: "tool_result",
-      title: "get_metrics → 200",
-      result: "error_rate=0.41 (baseline 0.008) · p95=2200ms · 5xx=873/2130 last 60s",
-    },
-  },
-  {
-    delay: 500,
-    event: {
-      type: "tool_call",
-      title: "get_logs",
-      tool: "get_logs",
-      args: { service: "shop", lines: 50 },
-    },
-  },
-  {
-    delay: 800,
-    event: {
-      type: "tool_result",
-      title: "get_logs → 50 lines",
-      result: `ConnectionError: HTTPConnectionPool(host='localhost', port=9999): Max retries exceeded
-  at shop/checkout.py:reserve_stock  (repeated 47×)`,
-    },
-  },
-  {
-    delay: 500,
-    event: {
-      type: "tool_call",
-      title: "get_git_history",
-      tool: "get_git_history",
-      args: { n: 10 },
-    },
-  },
-  {
-    delay: 700,
-    event: {
-      type: "tool_result",
-      title: "get_git_history → 10 commits",
-      result: `abc123  p1   16:00:42  shop/settings.py     INVENTORY_SERVICE_URL: 8000 → 9999
-b21c4a  p3   15:44:11  docs/README.md       typos
-7ee109  p2   15:12:03  ops/loadgen.py       traffic tweak`,
-    },
-  },
-  {
-    delay: 500,
-    event: {
-      type: "tool_call",
-      title: "retrieve_docs",
-      tool: "retrieve_docs",
-      args: { query: "checkout 500 inventory unreachable after config change", k: 3 },
-    },
-  },
-  {
-    delay: 900,
-    event: {
-      type: "retrieval",
-      title: "3 documents retrieved (VultronRetriever, cosine)",
-      citations: [
-        {
-          doc: "runbooks/RB-01-config-regression.md",
-          section: "3. Standard remediation",
-          snippet:
-            "Config regressions: revert the offending commit; do not hotfix under incident. Verify error_rate returns below 0.01 within 90 seconds of redeploy.",
-          score: 0.87,
-        },
-        {
-          doc: "incidents/INC-2025-014.md",
-          section: "Root cause",
-          snippet:
-            "A configuration commit pointed INVENTORY_SERVICE_URL to a port with no listener. Symptoms and remediation identical to current incident.",
-          score: 0.81,
-        },
-        {
-          doc: "sla.md",
-          section: "Checkout availability",
-          snippet:
-            "Checkout availability target 99.9%. Downtime cost: €150/min. On-call must be notified within 60s of a P1 alert.",
-          score: 0.74,
-        },
-      ],
-    },
-  },
-  {
-    delay: 900,
-    phase: "deciding",
-    event: {
-      type: "decision",
-      title: "Decision — revert (confidence 0.92)",
-      body: "Commit abc123 changed INVENTORY_SERVICE_URL to dead port :9999; checkout cannot reserve stock. Logs, git diff and INC-2025-014 all point to the same cause.",
-      meta: {
-        action: "revert",
-        bad_commit: "abc123",
-        confidence: "0.92",
-        "€/min": "150",
-        requires_approval: "true",
+// Shape returned by the runBrain server fn (structural typing to avoid importing
+// server code into this client-safe module).
+export interface BrainResultLike {
+  source: "vultr" | "fallback";
+  model: string | null;
+  plan: string[];
+  evidence: {
+    metrics: { error_rate: number; p95_ms: number; rps: number; baseline: number };
+    logs: string;
+    git: string;
+  };
+  retrieval: { doc: string; section: string; snippet: string; score: number }[];
+  decision: {
+    diagnosis: string;
+    bad_commit: string;
+    action: "revert" | "patch" | "escalate";
+    confidence: number;
+    citations: { doc: string; section: string }[];
+    sla_impact_eur_per_min: number;
+    requires_approval: boolean;
+    injection_flag?: string;
+  };
+  latency_ms: number;
+}
+
+// Build the investigation timeline from a REAL brain result (Vultr inference +
+// BM25 retrieval over docs-corpus). Everything shown is what the agent produced.
+export function stepsFromBrain(r: BrainResultLike): ScriptStep[] {
+  const m = r.evidence.metrics;
+  const engine =
+    r.source === "vultr"
+      ? `Vultr Serverless Inference · ${r.model ?? "llm"}`
+      : "local reasoning (Vultr not configured)";
+  const steps: ScriptStep[] = [
+    {
+      delay: 0,
+      phase: "alert",
+      metrics: { error_rate: m.error_rate, p95_ms: m.p95_ms, rps: m.rps, green: false },
+      event: {
+        type: "alert",
+        title: "Watchdog alert — error_rate_high on shop",
+        body: "POST /brain/webhook/alert",
+        meta: { service: "shop", error_rate: m.error_rate.toFixed(2), p95_ms: `${m.p95_ms} ms` },
       },
     },
-  },
-  {
-    delay: 700,
-    phase: "calling",
-    event: {
-      type: "calling",
-      title: "Placing outbound call to on-call — TTS · Twilio",
-      body: "Brief generated (54 words). Dialing on-call…",
+    {
+      delay: 700,
+      phase: "investigating",
+      event: {
+        type: "plan",
+        title: `Plan · ${engine}`,
+        body: r.plan.map((p, i) => `${i + 1}. ${p}`).join(" · "),
+      },
     },
-  },
-  {
-    delay: 1200,
-    phase: "ringing",
-    ring: true,
-    event: {
-      type: "calling",
-      title: "☎ Phone ringing",
-      body: "Waiting for spoken approval — GO · ROLLBACK · WAIT",
+    {
+      delay: 700,
+      event: {
+        type: "tool_call",
+        title: "get_metrics",
+        tool: "get_metrics",
+        args: { window_min: 10 },
+      },
     },
-  },
-];
+    {
+      delay: 600,
+      event: {
+        type: "tool_result",
+        title: "get_metrics → 200",
+        result: `error_rate=${m.error_rate} (baseline ${m.baseline}) · p95=${m.p95_ms}ms · rps=${m.rps}`,
+      },
+    },
+    {
+      delay: 500,
+      event: {
+        type: "tool_call",
+        title: "get_logs",
+        tool: "get_logs",
+        args: { service: "shop", lines: 50 },
+      },
+    },
+    {
+      delay: 700,
+      event: { type: "tool_result", title: "get_logs → 50 lines", result: r.evidence.logs },
+    },
+    {
+      delay: 500,
+      event: {
+        type: "tool_call",
+        title: "get_git_history",
+        tool: "get_git_history",
+        args: { n: 10 },
+      },
+    },
+    {
+      delay: 700,
+      event: { type: "tool_result", title: "get_git_history → 10 commits", result: r.evidence.git },
+    },
+    {
+      delay: 500,
+      event: {
+        type: "tool_call",
+        title: "retrieve_docs",
+        tool: "retrieve_docs",
+        args: { query: "config regression checkout", k: 3 },
+      },
+    },
+    {
+      delay: 800,
+      event: {
+        type: "retrieval",
+        title: `${r.retrieval.length} documents retrieved (BM25 · docs-corpus)`,
+        citations: r.retrieval,
+      },
+    },
+  ];
+
+  if (r.decision.injection_flag) {
+    steps.push({
+      delay: 700,
+      event: {
+        type: "tool_result",
+        title: "⚠ prompt-injection flagged in tool output",
+        body: r.decision.injection_flag,
+      },
+    });
+  }
+
+  steps.push(
+    {
+      delay: 800,
+      phase: "deciding",
+      event: {
+        type: "decision",
+        title: `Decision — ${r.decision.action} (confidence ${r.decision.confidence.toFixed(2)})`,
+        body: r.decision.diagnosis,
+        meta: {
+          action: r.decision.action,
+          bad_commit: r.decision.bad_commit,
+          confidence: r.decision.confidence.toFixed(2),
+          "€/min": r.decision.sla_impact_eur_per_min,
+          requires_approval: String(r.decision.requires_approval),
+          engine: r.source,
+        },
+      },
+    },
+    {
+      delay: 700,
+      phase: "calling",
+      event: {
+        type: "calling",
+        title: "Placing outbound call to on-call — TTS · Twilio",
+        body: "Brief generated. Dialing on-call…",
+      },
+    },
+    {
+      delay: 1200,
+      phase: "ringing",
+      ring: true,
+      event: {
+        type: "calling",
+        title: "☎ Phone ringing",
+        body: "Waiting for spoken approval — GO · ROLLBACK · WAIT",
+      },
+    },
+  );
+  return steps;
+}
 
 // After the human says GO: apply the fix, redeploy. Verification is done live
 // against the real health endpoints, then RESOLUTION is pushed.

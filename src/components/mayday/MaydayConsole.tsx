@@ -18,17 +18,25 @@ import {
 import {
   AFTER_APPROVAL,
   PHONE_BRIEF,
-  SCRIPT,
   SLA_EUR_PER_MIN,
   buildPostmortem,
   makeIncidentId,
   resolutionSteps,
+  stepsFromBrain,
+  type BrainResultLike,
   type Metrics,
   type Phase,
   type ScriptStep,
   type TimelineEvent,
 } from "@/lib/mayday/script";
 import { getIncidentDecision, getVoiceStatus, startMaydayCall } from "@/lib/mayday/call.functions";
+import { getBrainStatus, runBrain } from "@/lib/mayday/brain.functions";
+
+type BrainStatus = {
+  configured: boolean;
+  model: string | null;
+  corpus: { docs: number; chunks: number };
+};
 
 type VoiceStatus = {
   twilioDirect: boolean;
@@ -146,6 +154,7 @@ export function MaydayConsole() {
   const [remoteStatus, setRemoteStatus] = useState<string>("");
   const [remoteBusy, setRemoteBusy] = useState<null | "break" | "repair">(null);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
+  const [brainStatus, setBrainStatus] = useState<BrainStatus | null>(null);
 
   const timeoutsRef = useRef<number[]>([]);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -191,6 +200,8 @@ export function MaydayConsole() {
   const startCall = useServerFn(startMaydayCall);
   const pollDecision = useServerFn(getIncidentDecision);
   const fetchVoiceStatus = useServerFn(getVoiceStatus);
+  const analyzeBrain = useServerFn(runBrain);
+  const fetchBrainStatus = useServerFn(getBrainStatus);
 
   // What can the server really do (Twilio creds? Gradium key?) — shown in CONFIG.
   // Also prefill To/From with the numbers discovered on the Twilio account.
@@ -203,6 +214,9 @@ export function MaydayConsole() {
         setFromNumber((cur) => cur || s.suggestedFrom || "");
       })
       .catch(() => setVoiceStatus(null));
+    fetchBrainStatus({})
+      .then((b) => setBrainStatus(b as BrainStatus))
+      .catch(() => setBrainStatus(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -436,9 +450,28 @@ export function MaydayConsole() {
       setCallStatus(reason ?? "");
       setIncidentRef(makeIncidentId());
       if (source === "manual") breakShops();
-      runScript(SCRIPT, () => setPhase("awaiting_approval"));
+      // Run the REAL document-grounded agent (Vultr inference + BM25 retrieval),
+      // then animate its actual plan / evidence / citations / decision. The
+      // server fn never throws (it falls back internally), so the demo is safe.
+      analyzeBrain({ data: { error_rate: 0.41, p95_ms: 2200, rps: 62 } })
+        .then((r) =>
+          runScript(stepsFromBrain(r as BrainResultLike), () => setPhase("awaiting_approval")),
+        )
+        .catch(() => {
+          // Extreme fallback: network error reaching our own server fn.
+          setEvents((prev) => [
+            ...prev,
+            {
+              id: `${Date.now()}`,
+              ts: nowIso(),
+              type: "alert",
+              title: "Watchdog alert — error_rate_high on shop",
+              body: "brain unreachable — retry",
+            },
+          ]);
+        });
     },
-    [clearTimers, runScript, breakShops],
+    [clearTimers, runScript, breakShops, analyzeBrain],
   );
 
   const answerCall = useCallback(() => {
@@ -694,6 +727,7 @@ export function MaydayConsole() {
         live={realCallEnabled}
         watching={watchShop}
         shopHref={remoteShopUrl.trim() || "/shop"}
+        brainStatus={brainStatus}
       />
 
       {showConfig && (
@@ -781,6 +815,7 @@ function Header({
   live,
   watching,
   shopHref,
+  brainStatus,
 }: {
   phase: Phase;
   isBroken: boolean;
@@ -795,6 +830,7 @@ function Header({
   live: boolean;
   watching: boolean;
   shopHref: string;
+  brainStatus: BrainStatus | null;
 }) {
   const active = phase !== "idle";
   return (
@@ -817,6 +853,9 @@ function Header({
               )}
               {watching && (
                 <span className="border border-border px-1.5 py-px text-[9px]">WATCHDOG</span>
+              )}
+              {brainStatus?.configured && (
+                <span className="bg-neon px-1.5 py-px text-[9px] text-white">VULTR BRAIN</span>
               )}
             </div>
             <h1 className="truncate text-lg font-bold leading-tight">
