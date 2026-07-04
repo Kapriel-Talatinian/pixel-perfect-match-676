@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ShopRouteImport } from './routes/shop'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiShopProductsRouteImport } from './routes/api/shop/products'
 import { Route as ApiShopHealthRouteImport } from './routes/api/shop/health'
@@ -16,6 +17,11 @@ import { Route as ApiShopCheckoutRouteImport } from './routes/api/shop/checkout'
 import { Route as ApiShopAdminBreakRouteImport } from './routes/api/shop/admin.break'
 import { Route as ApiPublicMaydayVoiceResponseRouteImport } from './routes/api/public/mayday/voice-response'
 
+const ShopRoute = ShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -50,6 +56,7 @@ const ApiPublicMaydayVoiceResponseRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/shop': typeof ShopRoute
   '/api/shop/checkout': typeof ApiShopCheckoutRoute
   '/api/shop/health': typeof ApiShopHealthRoute
   '/api/shop/products': typeof ApiShopProductsRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/shop': typeof ShopRoute
   '/api/shop/checkout': typeof ApiShopCheckoutRoute
   '/api/shop/health': typeof ApiShopHealthRoute
   '/api/shop/products': typeof ApiShopProductsRoute
@@ -67,6 +75,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/shop': typeof ShopRoute
   '/api/shop/checkout': typeof ApiShopCheckoutRoute
   '/api/shop/health': typeof ApiShopHealthRoute
   '/api/shop/products': typeof ApiShopProductsRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/shop'
     | '/api/shop/checkout'
     | '/api/shop/health'
     | '/api/shop/products'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/shop'
     | '/api/shop/checkout'
     | '/api/shop/health'
     | '/api/shop/products'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/shop'
     | '/api/shop/checkout'
     | '/api/shop/health'
     | '/api/shop/products'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ShopRoute: typeof ShopRoute
   ApiShopCheckoutRoute: typeof ApiShopCheckoutRoute
   ApiShopHealthRoute: typeof ApiShopHealthRoute
   ApiShopProductsRoute: typeof ApiShopProductsRoute
@@ -111,6 +124,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/shop': {
+      id: '/shop'
+      path: '/shop'
+      fullPath: '/shop'
+      preLoaderRoute: typeof ShopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ShopRoute: ShopRoute,
   ApiShopCheckoutRoute: ApiShopCheckoutRoute,
   ApiShopHealthRoute: ApiShopHealthRoute,
   ApiShopProductsRoute: ApiShopProductsRoute,
