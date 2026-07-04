@@ -336,7 +336,8 @@ export function MaydayConsole() {
         cache: "no-store",
       });
       const h = await r.json();
-      if (h.ok) return { green: internalGreen, probe: `${probe} · remote 200 in ${h.latency_ms}ms` };
+      if (h.ok)
+        return { green: internalGreen, probe: `${probe} · remote 200 in ${h.latency_ms}ms` };
       // A reachable-but-broken VM blocks resolution; an unreachable VM (venue
       // network, VM down) must not hold the demo hostage — verify on internal only.
       if (String(h.reason ?? "").startsWith("unreachable")) {
