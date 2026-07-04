@@ -72,6 +72,7 @@ export function MaydayConsole() {
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.to", toNumber); }, [toNumber]);
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.from", fromNumber); }, [fromNumber]);
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.real", realCallEnabled ? "1" : "0"); }, [realCallEnabled]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.watch", watchShop ? "1" : "0"); }, [watchShop]);
 
   const startCall = useServerFn(startMaydayCall);
   const pollDecision = useServerFn(getIncidentDecision);
