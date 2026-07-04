@@ -306,17 +306,9 @@ export function MaydayConsole() {
 
   return (
     <div className="min-h-screen text-foreground">
-      <TopBar
-        phase={phase}
-        isBroken={isBroken}
-        euroLost={euroLost}
-        durationSecs={durationSecs}
-        onBreak={breakProduction}
-        onReset={reset}
-        canBreak={canBreak}
-      />
+      <TopBar phase={phase} isBroken={isBroken} />
 
-      <main className="mx-auto max-w-[1600px] px-4 pb-16 pt-6">
+      <main className="mx-auto max-w-3xl px-4 pb-16 pt-6">
         <TwilioSettings
           toNumber={toNumber}
           setToNumber={setToNumber}
@@ -354,9 +346,7 @@ export function MaydayConsole() {
             }
           }}
         />
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)_360px]">
-          <ShopPanel metrics={metrics} phase={phase} />
-          <AgentTimeline events={events} phase={phase} ref={timelineRef} />
+        <div className="mt-4">
           <PhonePanel
             ringing={ringing}
             phase={phase}
@@ -369,23 +359,48 @@ export function MaydayConsole() {
             callStatus={callStatus}
           />
         </div>
-
-        {(phase === "resolved" || showPostmortem) && (
-          <PostmortemPanel
-            open={showPostmortem}
-            setOpen={setShowPostmortem}
-            durationSecs={durationSecs}
-            euroLost={euroLost}
-          />
-        )}
-
-        <FooterMeta />
       </main>
     </div>
   );
 }
 
-function TopBar({
+function TopBar({ phase, isBroken }: { phase: Phase; isBroken: boolean }) {
+  const statusText: Record<Phase, string> = {
+    idle: "Standby",
+    alert: "Alert received",
+    investigating: "Investigating",
+    deciding: "Deciding",
+    calling: "Placing call",
+    ringing: "Ringing on-call",
+    awaiting_approval: "Awaiting approval",
+    approved: "Approved",
+    rejected: "Human took over",
+    fixing: "Applying fix",
+    verifying: "Verifying recovery",
+    resolved: "Resolved",
+  };
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-md">
+      <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+        <div className={`grid h-9 w-9 shrink-0 place-items-center text-mono text-base font-bold ${isBroken ? "bg-danger text-white glow-red" : "bg-primary text-primary-foreground glow-green"}`}>
+          M
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            MAYDAY · call bridge
+          </div>
+          <h1 className="truncate text-base font-bold">{statusText[phase]}</h1>
+        </div>
+        {phase !== "idle" && (
+          <span className="text-mono text-[10px] text-muted-foreground">{INCIDENT_ID}</span>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function _LegacyTopBar({
   phase,
   isBroken,
   euroLost,
