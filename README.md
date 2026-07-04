@@ -95,6 +95,28 @@ Twilio → **Gradium STT (fr)** → « ouais vas-y go » ⇒ GO. Touches **1/2/3
 (finissent l'enregistrement). Incompris ⇒ re-demande une fois ⇒ défaut WAIT.
 WAIT ⇒ MAYDAY rappelle 20 s plus tard tant que le service est down.
 
+## Prouvé sur infra réelle ✅
+
+Testé en direct (pas en simulation) :
+
+- **Boucle complète console ↔ vraie VM** : la console surveille `http://192.248.185.175`,
+  détecte une panne réelle (`/admin/break` → health 503), déroule l'agent, et le GO
+  **répare réellement la VM** (health 200).
+- **Vrai appel Twilio de bout en bout** : appel placé sur le réseau téléphonique →
+  Twilio exécute le webhook public → un « 1 » tapé sur l'appel → décision `go`
+  enregistrée par le vrai webhook. Prouvé sans humain via `SendDigits` (voir
+  `scripts/real-e2e.sh`).
+- **A→Z réel enchaîné** : casse VM réelle → vrai appel → GO → réparation VM réelle →
+  santé vérifiée verte.
+
+Rejouer la preuve (dev server + tunnel + `.env` avec les clés Twilio) :
+
+```bash
+npm run dev &                       # port 8080, charge .env
+npx localtunnel --port 8080         # → PUBLIC_URL https public
+PUBLIC_URL=https://xxx.loca.lt VM=http://192.248.185.175 ./scripts/real-e2e.sh
+```
+
 ## Scénario scène (3 min)
 
 1. Console au vert, WATCHDOG on, REAL CALL on. Boutique VM ouverte dans un onglet.

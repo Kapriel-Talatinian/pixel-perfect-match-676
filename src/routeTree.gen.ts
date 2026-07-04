@@ -20,6 +20,7 @@ import { Route as ApiMaydayPlaceCallRouteImport } from './routes/api/mayday/plac
 import { Route as ApiShopAdminBreakRouteImport } from './routes/api/shop/admin.break'
 import { Route as ApiPublicMaydayVoiceResponseRouteImport } from './routes/api/public/mayday/voice-response'
 import { Route as ApiPublicMaydayTtsRouteImport } from './routes/api/public/mayday/tts'
+import { Route as ApiPublicMaydaySelftestRouteImport } from './routes/api/public/mayday/selftest'
 import { Route as ApiPublicMaydayRecordingRouteImport } from './routes/api/public/mayday/recording'
 import { Route as ApiPublicMaydayHoldRouteImport } from './routes/api/public/mayday/hold'
 import { Route as ApiPublicMaydayGatherTestRouteImport } from './routes/api/public/mayday/gather-test'
@@ -80,6 +81,11 @@ const ApiPublicMaydayTtsRoute = ApiPublicMaydayTtsRouteImport.update({
   path: '/api/public/mayday/tts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMaydaySelftestRoute = ApiPublicMaydaySelftestRouteImport.update({
+  id: '/api/public/mayday/selftest',
+  path: '/api/public/mayday/selftest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicMaydayRecordingRoute =
   ApiPublicMaydayRecordingRouteImport.update({
     id: '/api/public/mayday/recording',
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/api/public/mayday/gather-test': typeof ApiPublicMaydayGatherTestRoute
   '/api/public/mayday/hold': typeof ApiPublicMaydayHoldRoute
   '/api/public/mayday/recording': typeof ApiPublicMaydayRecordingRoute
+  '/api/public/mayday/selftest': typeof ApiPublicMaydaySelftestRoute
   '/api/public/mayday/tts': typeof ApiPublicMaydayTtsRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
   '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/api/public/mayday/gather-test': typeof ApiPublicMaydayGatherTestRoute
   '/api/public/mayday/hold': typeof ApiPublicMaydayHoldRoute
   '/api/public/mayday/recording': typeof ApiPublicMaydayRecordingRoute
+  '/api/public/mayday/selftest': typeof ApiPublicMaydaySelftestRoute
   '/api/public/mayday/tts': typeof ApiPublicMaydayTtsRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
   '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/api/public/mayday/gather-test': typeof ApiPublicMaydayGatherTestRoute
   '/api/public/mayday/hold': typeof ApiPublicMaydayHoldRoute
   '/api/public/mayday/recording': typeof ApiPublicMaydayRecordingRoute
+  '/api/public/mayday/selftest': typeof ApiPublicMaydaySelftestRoute
   '/api/public/mayday/tts': typeof ApiPublicMaydayTtsRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
   '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/api/public/mayday/gather-test'
     | '/api/public/mayday/hold'
     | '/api/public/mayday/recording'
+    | '/api/public/mayday/selftest'
     | '/api/public/mayday/tts'
     | '/api/public/mayday/voice-response'
     | '/api/shop/admin/break'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/api/public/mayday/gather-test'
     | '/api/public/mayday/hold'
     | '/api/public/mayday/recording'
+    | '/api/public/mayday/selftest'
     | '/api/public/mayday/tts'
     | '/api/public/mayday/voice-response'
     | '/api/shop/admin/break'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/api/public/mayday/gather-test'
     | '/api/public/mayday/hold'
     | '/api/public/mayday/recording'
+    | '/api/public/mayday/selftest'
     | '/api/public/mayday/tts'
     | '/api/public/mayday/voice-response'
     | '/api/shop/admin/break'
@@ -210,6 +222,7 @@ export interface RootRouteChildren {
   ApiPublicMaydayGatherTestRoute: typeof ApiPublicMaydayGatherTestRoute
   ApiPublicMaydayHoldRoute: typeof ApiPublicMaydayHoldRoute
   ApiPublicMaydayRecordingRoute: typeof ApiPublicMaydayRecordingRoute
+  ApiPublicMaydaySelftestRoute: typeof ApiPublicMaydaySelftestRoute
   ApiPublicMaydayTtsRoute: typeof ApiPublicMaydayTtsRoute
   ApiPublicMaydayVoiceResponseRoute: typeof ApiPublicMaydayVoiceResponseRoute
   ApiShopAdminBreakRoute: typeof ApiShopAdminBreakRoute
@@ -294,6 +307,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMaydayTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mayday/selftest': {
+      id: '/api/public/mayday/selftest'
+      path: '/api/public/mayday/selftest'
+      fullPath: '/api/public/mayday/selftest'
+      preLoaderRoute: typeof ApiPublicMaydaySelftestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/mayday/recording': {
       id: '/api/public/mayday/recording'
       path: '/api/public/mayday/recording'
@@ -330,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMaydayGatherTestRoute: ApiPublicMaydayGatherTestRoute,
   ApiPublicMaydayHoldRoute: ApiPublicMaydayHoldRoute,
   ApiPublicMaydayRecordingRoute: ApiPublicMaydayRecordingRoute,
+  ApiPublicMaydaySelftestRoute: ApiPublicMaydaySelftestRoute,
   ApiPublicMaydayTtsRoute: ApiPublicMaydayTtsRoute,
   ApiPublicMaydayVoiceResponseRoute: ApiPublicMaydayVoiceResponseRoute,
   ApiShopAdminBreakRoute: ApiShopAdminBreakRoute,
