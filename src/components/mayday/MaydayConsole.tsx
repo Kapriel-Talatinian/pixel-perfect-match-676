@@ -254,22 +254,42 @@ export function MaydayConsole() {
     return () => { window.clearInterval(id); pollRef.current = null; };
   }, [incidentId, phase, pollDecision, decide, callAnswered]);
 
-  // Watchdog: poll the real /shop /api/shop/health and auto-trigger the flow when broken
+  // Watchdog: poll internal /api/shop/health AND remote shop via server-side proxy
   useEffect(() => {
     if (!watchShop) return;
     const canTrigger = () => phase === "idle" || phase === "resolved" || phase === "rejected";
     const tick = async () => {
+      let broken = false;
+      let reason = "";
+      // internal demo shop
       try {
         const r = await fetch("/api/shop/health", { cache: "no-store" });
         const h = await r.json();
-        if (h.broken && canTrigger()) breakProduction();
+        if (h.broken) { broken = true; reason = `internal shop · ${h.reason}`; }
       } catch { /* ignore */ }
+      // remote real shop (via proxy, no CORS issues)
+      if (remoteShopUrl.trim()) {
+        try {
+          const r = await fetch(`/api/vultr-shop/health?url=${encodeURIComponent(remoteShopUrl.trim())}`, { cache: "no-store" });
+          const h = await r.json();
+          setRemoteStatus(h.ok ? `remote OK · ${h.latency_ms}ms` : `remote DOWN · ${h.reason ?? "?"}`);
+          if (h.broken && !broken) { broken = true; reason = `remote shop · ${h.reason}`; }
+        } catch (e) {
+          setRemoteStatus(`remote error · ${(e as Error).message}`);
+        }
+      } else {
+        setRemoteStatus("");
+      }
+      if (broken && canTrigger()) {
+        setCallStatus(reason);
+        breakProduction();
+      }
     };
     tick();
-    const id = window.setInterval(tick, 2500);
+    const id = window.setInterval(tick, 3000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchShop, phase]);
+  }, [watchShop, phase, remoteShopUrl]);
 
 
 
