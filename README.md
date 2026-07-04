@@ -54,14 +54,40 @@ Poser dans l'environnement du serveur (`.env` en local — chargé automatiqueme
 | `ALLOW_CALL_API=1` | optionnel — active `POST /api/mayday/place-call` (déclenchement d'appel par curl) |
 
 Dès que les clés Twilio sont posées, la console **découvre et préremplit toute seule**
-le numéro From (numéro du compte) et le To (caller ID vérifié). Compte trial : le To
-doit être un numéro **vérifié** dans la console Twilio, au format E.164 exact.
+le numéro From (numéro du compte) et le To (caller ID vérifié).
+
+### ⚠️ Appel réel vers ton téléphone — la seule étape manuelle
+
+Le compte Twilio fourni est un **compte trial** : il ne peut appeler qu'un numéro
+**vérifié**. Le numéro actuellement vérifié est enregistré au **mauvais format**
+(`+330688903650`, avec un 0 en trop) → Twilio refuse de le router. À corriger une fois :
+
+1. Console Twilio → **Phone Numbers → Verified Caller IDs → Add a new Caller ID**.
+2. Saisir **`+33688903650`** (format E.164 correct, sans le 0 national).
+3. Valider par le code reçu par SMS/appel.
+
+_(Cette re-vérification est impossible via l'API sur un compte trial — testé. Alternative :
+upgrader le compte, ce qui lève aussi le « press any key » du trial et la restriction de
+destinataires.)_ Une fois fait, l'appel réel vers ton téléphone marche immédiatement.
 
 Le panneau CONFIG affiche en direct ce que le serveur sait faire
 (« Twilio ■ direct · Gradium ■ TTS+STT »). Sans clé Gradium ⇒ fallback automatique
 Polly/`<Gather>` (Twilio ASR). Sans clés Twilio ⇒ mode simulation à l'écran.
-**Important :** les webhooks doivent être joignables par Twilio ⇒ l'appel réel ne
-fonctionne que sur l'app **déployée** (URL publique), pas sur localhost.
+**Important :** les webhooks doivent être joignables par Twilio ⇒ l'appel réel a
+besoin d'une **URL publique**. Deux options :
+- **App déployée** (Lovable Publish) : les webhooks pointent automatiquement sur le
+  domaine public. Poser les secrets Twilio/Gradium côté Lovable.
+- **Local + tunnel** (`npm run dev` + `npx localtunnel --port 8080` ou ngrok) : le
+  dev server charge `.env` tout seul, `vite allowedHosts` accepte déjà les tunnels.
+  Idéal en dev car le state en mémoire est partagé (relais de décision garanti).
+
+### Relais de décision (déploiement multi-isolate)
+
+Sur un déploiement edge (Cloudflare/Workers), le webhook Twilio et le polling du
+navigateur peuvent tomber sur des isolates différents (mémoire non partagée). La
+console relaie donc la décision via l'endpoint `POST/GET /mayday/decision` du
+**vm-shop** (source de vérité unique). ⇒ Déployer `vm-shop/main.py` (qui inclut cet
+endpoint) sur la VM. En local (un seul process Node) le relais mémoire suffit.
 
 Flux Gradium : TwiML `<Play>` d'une URL TTS signée (HMAC — personne d'autre ne peut
 consommer les crédits) → `<Record>` de la réponse → webhook télécharge l'audio chez
