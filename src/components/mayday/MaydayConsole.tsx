@@ -589,10 +589,17 @@ export function MaydayConsole() {
             { cache: "no-store" },
           );
           const h = await r.json();
+          const unreachable = String(h.reason ?? "").startsWith("unreachable");
           setRemoteStatus(
-            h.ok ? `remote OK · ${h.latency_ms}ms` : `remote DOWN · ${h.reason ?? "?"}`,
+            h.ok
+              ? `remote OK · ${h.latency_ms}ms`
+              : unreachable
+                ? `remote unreachable · ${h.latency_ms}ms`
+                : `remote DOWN · ${h.reason ?? "?"}`,
           );
-          if (h.broken && !broken) {
+          // Only a reachable-but-broken VM opens an incident; an unreachable VM
+          // (venue wifi, VM off) would loop forever since we can't repair it.
+          if (h.broken && !unreachable && !broken) {
             broken = true;
             reason = `remote shop · ${h.reason}`;
           }
