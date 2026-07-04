@@ -217,16 +217,16 @@ export function MaydayConsole() {
   useEffect(() => {
     if (!ringing || !realCallEnabled || incidentId) return;
     if (!toNumber || !fromNumber) {
-      setCallStatus("⚠ enter your phone + Twilio From number to enable real call");
+      setCallStatus("Enter your phone + Twilio From number to enable real call");
       return;
     }
-    setCallStatus("📡 placing Twilio call…");
+    setCallStatus("Placing Twilio call…");
     startCall({ data: { to: toNumber, from: fromNumber, brief: PHONE_BRIEF } })
       .then((r) => {
         setIncidentId(r.id);
-        setCallStatus(`📞 ringing ${toNumber} · SID ${(r.callSid ?? "").slice(-6) || "?"}`);
+        setCallStatus(`Ringing ${toNumber} · SID ${(r.callSid ?? "").slice(-6) || "?"}`);
       })
-      .catch((e: unknown) => setCallStatus(`❌ ${(e as Error)?.message ?? "call failed"}`));
+      .catch((e: unknown) => setCallStatus(`Call failed: ${(e as Error)?.message ?? "call failed"}`));
   }, [ringing, realCallEnabled, toNumber, fromNumber, incidentId, startCall]);
 
   // Poll for the caller's DTMF decision, mirror it into the UI
@@ -239,7 +239,7 @@ export function MaydayConsole() {
         if (r.decision) {
           window.clearInterval(id);
           pollRef.current = null;
-          setCallStatus(`✅ phone reply: ${r.decision.toUpperCase()}`);
+          setCallStatus(`Phone reply: ${r.decision.toUpperCase()}`);
           if (!callAnswered) setCallAnswered(true);
           decide(r.decision);
         }
@@ -548,7 +548,7 @@ function EmptyState() {
         <div className="text-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">MAYDAY console</div>
         <h2 className="mt-2 text-2xl font-bold">Your infrastructure just called.<br /><span className="text-primary">It fixed itself.</span></h2>
         <p className="mt-3 text-sm text-muted-foreground">
-          Hit <span className="text-mono text-danger">💥 Break production</span> to trigger a real config regression on the shop service. Watch the agent plan, call 7 tools, retrieve 3 documents, then phone the on-call human for approval.
+          Hit <span className="text-mono text-danger">Break production</span> to trigger a real config regression on the shop service. Watch the agent plan, call 7 tools, retrieve 3 documents, then phone the on-call human for approval.
         </p>
         <div className="mt-4 grid grid-cols-3 gap-2 text-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           <div className="rounded border border-border/60 py-2">detect</div>
@@ -605,7 +605,7 @@ function TimelineItem({ event: e }: { event: TimelineEvent }) {
                 <div key={i} className="rounded-md border border-neon/30 bg-neon/[0.04] px-2.5 py-2">
                   <div className="flex flex-wrap items-baseline justify-between gap-2 text-mono text-[10px]">
                     <div className="min-w-0 truncate">
-                      <span className="text-neon">📄 {c.doc}</span>
+                      <span className="text-neon">{c.doc}</span>
                       <span className="text-muted-foreground"> § {c.section}</span>
                     </div>
                     <span className="shrink-0 text-muted-foreground">score {c.score.toFixed(2)}</span>
@@ -791,7 +791,7 @@ function PostmortemPanel({
         className="flex w-full items-center justify-between border-b border-border/60 bg-success/5 px-4 py-3 text-left transition hover:bg-success/10"
       >
         <div className="flex min-w-0 items-center gap-3">
-          <span className="text-2xl">📄</span>
+          <FileText className="h-5 w-5 text-primary" />
           <div className="min-w-0">
             <div className="text-mono text-[10px] uppercase tracking-widest text-success">post-mortem · committed</div>
             <div className="truncate text-base font-bold">docs/postmortems/{INCIDENT_ID}.md</div>
