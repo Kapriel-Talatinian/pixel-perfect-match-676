@@ -331,8 +331,28 @@ export function MaydayConsole() {
         <RemoteShopBar
           url={remoteShopUrl}
           setUrl={setRemoteShopUrl}
+          token={remoteShopToken}
+          setToken={setRemoteShopToken}
           status={remoteStatus}
           watching={watchShop}
+          busy={remoteBusy}
+          onAction={async (action) => {
+            if (!remoteShopUrl.trim()) return;
+            setRemoteBusy(action);
+            try {
+              const r = await fetch("/api/vultr-shop/break", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ url: remoteShopUrl.trim(), action, token: remoteShopToken.trim() || undefined }),
+              });
+              const j = await r.json();
+              setRemoteStatus(j.ok ? `remote ${action} OK · ${j.latency_ms}ms` : `remote ${action} FAIL · ${j.error ?? j.upstream_status ?? "?"}`);
+            } catch (e) {
+              setRemoteStatus(`remote ${action} error · ${(e as Error).message}`);
+            } finally {
+              setRemoteBusy(null);
+            }
+          }}
         />
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)_360px]">
           <ShopPanel metrics={metrics} phase={phase} />
@@ -1023,16 +1043,24 @@ function TwilioSettings({
 function RemoteShopBar({
   url,
   setUrl,
+  token,
+  setToken,
   status,
   watching,
+  busy,
+  onAction,
 }: {
   url: string;
   setUrl: (v: string) => void;
+  token: string;
+  setToken: (v: string) => void;
   status: string;
   watching: boolean;
+  busy: null | "break" | "repair";
+  onAction: (action: "break" | "repair") => void;
 }) {
-  const ok = status.startsWith("remote OK");
-  const down = status.startsWith("remote DOWN") || status.startsWith("remote error");
+  const ok = status.includes("OK");
+  const down = status.includes("DOWN") || status.includes("FAIL") || status.includes("error");
   return (
     <section className="panel mt-3 flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
       <div className="flex items-center gap-2">
@@ -1040,7 +1068,7 @@ function RemoteShopBar({
         <span className="text-mono text-[10px] uppercase tracking-widest text-muted-foreground">Vultr shop</span>
       </div>
       <label className="flex flex-1 items-center gap-2 text-mono text-xs">
-        <span className="w-20 shrink-0 text-muted-foreground">URL</span>
+        <span className="w-16 shrink-0 text-muted-foreground">URL</span>
         <input
           type="url"
           value={url}
@@ -1049,10 +1077,39 @@ function RemoteShopBar({
           className="min-w-0 flex-1 border border-border bg-background/60 px-2.5 py-1.5 text-mono text-xs outline-none focus:border-primary"
         />
       </label>
+      <label className="flex items-center gap-2 text-mono text-xs">
+        <span className="w-12 shrink-0 text-muted-foreground">TOKEN</span>
+        <input
+          type="password"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          placeholder="optional"
+          className="w-32 border border-border bg-background/60 px-2.5 py-1.5 text-mono text-xs outline-none focus:border-primary"
+        />
+      </label>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={busy !== null || !url.trim()}
+          onClick={() => onAction("break")}
+          className="border border-danger/60 bg-danger/10 px-3 py-1.5 text-mono text-[11px] uppercase tracking-widest text-danger hover:bg-danger/20 disabled:opacity-40"
+        >
+          {busy === "break" ? "breaking…" : "Break shop"}
+        </button>
+        <button
+          type="button"
+          disabled={busy !== null || !url.trim()}
+          onClick={() => onAction("repair")}
+          className="border border-primary/60 bg-primary/10 px-3 py-1.5 text-mono text-[11px] uppercase tracking-widest text-primary hover:bg-primary/20 disabled:opacity-40"
+        >
+          {busy === "repair" ? "repairing…" : "Repair"}
+        </button>
+      </div>
       <span className={`shrink-0 text-mono text-[11px] ${ok ? "text-primary" : down ? "text-danger" : "text-muted-foreground"}`}>
-        {watching ? (status || "polling…") : "watch disabled"}
+        {status || (watching ? "polling…" : "watch disabled")}
       </span>
     </section>
   );
 }
+
 
