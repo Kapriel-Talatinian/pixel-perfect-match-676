@@ -5,12 +5,19 @@
 #
 # Pré-requis :
 #   - dev server lancé (npm run dev, port 8080) OU l'app déployée
-#   - un tunnel HTTPS public vers ce port (ex: npx localtunnel --port 8080) → PUBLIC_URL
+#   - un tunnel HTTPS public FIABLE vers ce port → PUBLIC_URL
+#       ⚠️ localtunnel timeoute (Twilio erreur 11200 / HTTP 408). Utiliser cloudflared :
+#       cloudflared tunnel --url http://localhost:8080   → https://xxx.trycloudflare.com
 #   - .env chargé avec les clés Twilio (TWILIO_ACCOUNT_SID / TWILIO_API_KEY_SID / _SECRET)
-#   - la vraie boutique VM qui expose /admin/break, /admin/repair, /health et /mayday/decision
+#   - une boutique exposant /admin/break, /admin/repair, /health (VM réelle)
+#     ET un état partageant /mayday/decision (STATE = la VM si elle l'expose, sinon vm-shop:8765)
+#
+# Prouvé OK le 2026-07-04 (compte AC8803…, numéro +14788341723) :
+#   break VM 503 → vrai appel SendDigits GO → décision "go" via webhook → repair VM 200 → ✅
 #
 # Usage :
-#   PUBLIC_URL=https://xxx.loca.lt VM=http://192.248.185.175 ./scripts/real-e2e.sh
+#   PUBLIC_URL=https://xxx.trycloudflare.com VM=http://192.248.185.175 \
+#     STATE=http://127.0.0.1:8765 FROM=+14788341723 TO=+14788341723 ./scripts/real-e2e.sh
 set -euo pipefail
 
 : "${PUBLIC_URL:?exporte PUBLIC_URL (tunnel https public vers le port 8080)}"

@@ -77,9 +77,11 @@ Polly/`<Gather>` (Twilio ASR). Sans clés Twilio ⇒ mode simulation à l'écran
 besoin d'une **URL publique**. Deux options :
 - **App déployée** (Lovable Publish) : les webhooks pointent automatiquement sur le
   domaine public. Poser les secrets Twilio/Gradium côté Lovable.
-- **Local + tunnel** (`npm run dev` + `npx localtunnel --port 8080` ou ngrok) : le
-  dev server charge `.env` tout seul, `vite allowedHosts` accepte déjà les tunnels.
-  Idéal en dev car le state en mémoire est partagé (relais de décision garanti).
+- **Local + tunnel** (`npm run dev` + tunnel) : le dev server charge `.env` tout seul,
+  `vite allowedHosts` accepte déjà les tunnels. Idéal en dev (state mémoire partagé).
+  ⚠️ **Utiliser cloudflared, pas localtunnel** : localtunnel timeoute et Twilio renvoie
+  l'erreur `11200 / HTTP 408`. Cloudflared répond en ~60 ms :
+  `cloudflared tunnel --url http://localhost:8080` → `https://xxx.trycloudflare.com`.
 
 ### Relais de décision (déploiement multi-isolate)
 
@@ -102,19 +104,20 @@ Testé en direct (pas en simulation) :
 - **Boucle complète console ↔ vraie VM** : la console surveille `http://192.248.185.175`,
   détecte une panne réelle (`/admin/break` → health 503), déroule l'agent, et le GO
   **répare réellement la VM** (health 200).
-- **Vrai appel Twilio de bout en bout** : appel placé sur le réseau téléphonique →
-  Twilio exécute le webhook public → un « 1 » tapé sur l'appel → décision `go`
-  enregistrée par le vrai webhook. Prouvé sans humain via `SendDigits` (voir
-  `scripts/real-e2e.sh`).
-- **A→Z réel enchaîné** : casse VM réelle → vrai appel → GO → réparation VM réelle →
-  santé vérifiée verte.
+- **Vrai appel Twilio de bout en bout** : appel réel sur le réseau téléphonique →
+  décroché par un humain → brief joué → « 1 » tapé → décision `go` remontée par le
+  vrai webhook, **zéro erreur Twilio**. Aussi prouvé **sans humain** via `SendDigits`.
+- **A→Z réel enchaîné** (le 2026-07-04, compte `AC8803…`, n° `+14788341723`) :
+  casse VM réelle (503) → vrai appel → GO → réparation VM réelle (200) → ✅.
 
-Rejouer la preuve (dev server + tunnel + `.env` avec les clés Twilio) :
+Rejouer la preuve (dev server + tunnel cloudflared + `.env` avec les clés Twilio) :
 
 ```bash
-npm run dev &                       # port 8080, charge .env
-npx localtunnel --port 8080         # → PUBLIC_URL https public
-PUBLIC_URL=https://xxx.loca.lt VM=http://192.248.185.175 ./scripts/real-e2e.sh
+npm run dev &                                   # port 8080, charge .env
+cloudflared tunnel --url http://localhost:8080  # → https://xxx.trycloudflare.com
+# STATE = boutique exposant /mayday/decision (vm-shop:8765 en local, ou la VM si déployée)
+PUBLIC_URL=https://xxx.trycloudflare.com VM=http://192.248.185.175 \
+  STATE=http://127.0.0.1:8765 FROM=+14788341723 TO=+14788341723 ./scripts/real-e2e.sh
 ```
 
 ## Scénario scène (3 min)
