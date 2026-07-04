@@ -325,6 +325,12 @@ export function MaydayConsole() {
           watchShop={watchShop}
           setWatchShop={setWatchShop}
         />
+        <RemoteShopBar
+          url={remoteShopUrl}
+          setUrl={setRemoteShopUrl}
+          status={remoteStatus}
+          watching={watchShop}
+        />
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)_360px]">
           <ShopPanel metrics={metrics} phase={phase} />
           <AgentTimeline events={events} phase={phase} ref={timelineRef} />
