@@ -10,33 +10,44 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicMaydayVoiceResponseRouteImport } from './routes/api/public/mayday/voice-response'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMaydayVoiceResponseRoute =
+  ApiPublicMaydayVoiceResponseRouteImport.update({
+    id: '/api/public/mayday/voice-response',
+    path: '/api/public/mayday/voice-response',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/public/mayday/voice-response'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/public/mayday/voice-response'
+  id: '__root__' | '/' | '/api/public/mayday/voice-response'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicMaydayVoiceResponseRoute: typeof ApiPublicMaydayVoiceResponseRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +59,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mayday/voice-response': {
+      id: '/api/public/mayday/voice-response'
+      path: '/api/public/mayday/voice-response'
+      fullPath: '/api/public/mayday/voice-response'
+      preLoaderRoute: typeof ApiPublicMaydayVoiceResponseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicMaydayVoiceResponseRoute: ApiPublicMaydayVoiceResponseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

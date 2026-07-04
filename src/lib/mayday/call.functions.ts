@@ -81,6 +81,6 @@ export const getIncidentDecision = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { incidentStore } = await import("./store.server");
     const rec = incidentStore.get(data.id);
-    if (!rec) return { decision: null as const, exists: false };
+    if (!rec) return { decision: null as IncidentDecision, exists: false };
     return { decision: rec.decision, exists: true };
   });
