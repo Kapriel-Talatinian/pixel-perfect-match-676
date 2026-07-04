@@ -63,6 +63,14 @@ function nowIso() {
   return new Date().toISOString().slice(11, 19);
 }
 
+// Twilio webhooks can only reach a public origin. When the page is opened from
+// localhost, the real call would ring but the reply webhook would never arrive.
+function originIsLocal() {
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname;
+  return h === "localhost" || h === "127.0.0.1" || h === "0.0.0.0" || h.endsWith(".local");
+}
+
 function maskPhone(p: string) {
   if (!/^\+\d{6,15}$/.test(p)) return "on-call";
   return `${p.slice(0, 4)} ●● ●● ${p.slice(-2)}`;
@@ -569,6 +577,14 @@ export function MaydayConsole() {
       setCallStatus("Set your phone + Twilio number in CONFIG to enable the real call");
       return;
     }
+    if (originIsLocal()) {
+      // The call would ring, but Twilio can't reach a localhost webhook, so the
+      // spoken reply would never come back. Warn instead of half-working.
+      setCallStatus(
+        "⚠ Open this page from the PUBLIC URL (cloudflared tunnel or deployed app), not localhost — Twilio can't reach a localhost webhook.",
+      );
+      return;
+    }
     setCallStatus("Placing Twilio call…");
     startCall({
       data: {
@@ -1044,6 +1060,14 @@ function ConfigPanel({
               {voiceStatus?.gradium
                 ? `Gradium ■ TTS+STT · voice ${voiceStatus.gradiumVoice.slice(0, 6)}…`
                 : "Gradium □ off → Polly fallback"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-mono text-[10px] uppercase tracking-widest">
+            <span className={`h-1.5 w-1.5 ${originIsLocal() ? "bg-danger" : "bg-success"}`} />
+            <span className={originIsLocal() ? "text-danger" : "text-success"}>
+              {originIsLocal()
+                ? "localhost — webhooks unreachable, open the public URL"
+                : "public URL — Twilio webhooks reachable ✓"}
             </span>
           </div>
           <p className="text-mono text-[10px] text-muted-foreground">
