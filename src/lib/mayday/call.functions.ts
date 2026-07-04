@@ -52,7 +52,8 @@ async function placeCall(to: string, from: string, twiml: string): Promise<{ sid
       body,
     });
     const payload = (await res.json().catch(() => ({}))) as { sid?: string; message?: string };
-    if (!res.ok) throw new Error(`Twilio ${res.status}: ${payload?.message || JSON.stringify(payload)}`);
+    if (!res.ok)
+      throw new Error(`Twilio ${res.status}: ${payload?.message || JSON.stringify(payload)}`);
     return payload;
   }
 
@@ -60,7 +61,9 @@ async function placeCall(to: string, from: string, twiml: string): Promise<{ sid
   const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
   const TWILIO_API_KEY = process.env.TWILIO_API_KEY;
   if (!LOVABLE_API_KEY || !TWILIO_API_KEY) {
-    throw new Error("Twilio not configured — set TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN (or the Lovable Twilio connector)");
+    throw new Error(
+      "Twilio not configured — set TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN (or the Lovable Twilio connector)",
+    );
   }
   const res = await fetch("https://connector-gateway.lovable.dev/twilio/Calls.json", {
     method: "POST",
@@ -72,7 +75,8 @@ async function placeCall(to: string, from: string, twiml: string): Promise<{ sid
     body,
   });
   const payload = (await res.json().catch(() => ({}))) as { sid?: string; message?: string };
-  if (!res.ok) throw new Error(`Twilio ${res.status}: ${payload?.message || JSON.stringify(payload)}`);
+  if (!res.ok)
+    throw new Error(`Twilio ${res.status}: ${payload?.message || JSON.stringify(payload)}`);
   return payload;
 }
 
@@ -145,11 +149,16 @@ export const getIncidentDecision = createServerFn({ method: "GET" })
         if (r.ok) {
           const j = (await r.json()) as { decision?: string | null };
           if (j.decision === "go" || j.decision === "rollback" || j.decision === "wait") {
-            if (rec) { rec.decision = j.decision; rec.updatedAt = Date.now(); }
+            if (rec) {
+              rec.decision = j.decision;
+              rec.updatedAt = Date.now();
+            }
             return { decision: j.decision as IncidentDecision, exists: true };
           }
         }
-      } catch { /* VM unreachable — keep polling */ }
+      } catch {
+        /* VM unreachable — keep polling */
+      }
     }
     return { decision: null as IncidentDecision, exists: !!rec };
   });

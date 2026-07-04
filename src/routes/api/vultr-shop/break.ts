@@ -40,23 +40,33 @@ export const Route = createFileRoute("/api/vultr-shop/break")({
           clearTimeout(timer);
           const text = await r.text();
           let body: unknown = text.slice(0, 400);
-          try { body = JSON.parse(text); } catch { /* keep text */ }
-          return Response.json({
-            ok: r.ok,
-            action,
-            target,
-            upstream_status: r.status,
-            upstream_body: body,
-            latency_ms: Date.now() - t0,
-          }, { headers: { "cache-control": "no-store" } });
+          try {
+            body = JSON.parse(text);
+          } catch {
+            /* keep text */
+          }
+          return Response.json(
+            {
+              ok: r.ok,
+              action,
+              target,
+              upstream_status: r.status,
+              upstream_body: body,
+              latency_ms: Date.now() - t0,
+            },
+            { headers: { "cache-control": "no-store" } },
+          );
         } catch (e) {
-          return Response.json({
-            ok: false,
-            action,
-            target,
-            error: (e as Error).message,
-            latency_ms: Date.now() - t0,
-          }, { status: 502, headers: { "cache-control": "no-store" } });
+          return Response.json(
+            {
+              ok: false,
+              action,
+              target,
+              error: (e as Error).message,
+              latency_ms: Date.now() - t0,
+            },
+            { status: 502, headers: { "cache-control": "no-store" } },
+          );
         }
       },
     },

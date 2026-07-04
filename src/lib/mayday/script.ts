@@ -70,7 +70,11 @@ function fmtDuration(secs: number) {
   return `${Math.floor(secs / 60)}m ${String(Math.max(0, secs % 60)).padStart(2, "0")}s`;
 }
 
-export function buildPostmortem(opts: { incidentId: string; durationSecs: number; euroLost: number }) {
+export function buildPostmortem(opts: {
+  incidentId: string;
+  durationSecs: number;
+  euroLost: number;
+}) {
   const { incidentId, durationSecs, euroLost } = opts;
   return `# Post-mortem — ${incidentId.toUpperCase()}
 
@@ -214,19 +218,22 @@ b21c4a  p3   15:44:11  docs/README.md       typos
         {
           doc: "runbooks/RB-01-config-regression.md",
           section: "3. Standard remediation",
-          snippet: "Config regressions: revert the offending commit; do not hotfix under incident. Verify error_rate returns below 0.01 within 90 seconds of redeploy.",
+          snippet:
+            "Config regressions: revert the offending commit; do not hotfix under incident. Verify error_rate returns below 0.01 within 90 seconds of redeploy.",
           score: 0.87,
         },
         {
           doc: "incidents/INC-2025-014.md",
           section: "Root cause",
-          snippet: "A configuration commit pointed INVENTORY_SERVICE_URL to a port with no listener. Symptoms and remediation identical to current incident.",
+          snippet:
+            "A configuration commit pointed INVENTORY_SERVICE_URL to a port with no listener. Symptoms and remediation identical to current incident.",
           score: 0.81,
         },
         {
           doc: "sla.md",
           section: "Checkout availability",
-          snippet: "Checkout availability target 99.9%. Downtime cost: €150/min. On-call must be notified within 60s of a P1 alert.",
+          snippet:
+            "Checkout availability target 99.9%. Downtime cost: €150/min. On-call must be notified within 60s of a P1 alert.",
           score: 0.74,
         },
       ],
@@ -277,7 +284,7 @@ export const AFTER_APPROVAL: ScriptStep[] = [
     phase: "fixing",
     event: {
       type: "approval",
-      title: "Approval received — human said \"GO\"",
+      title: 'Approval received — human said "GO"',
       body: "channel=phone · normalized=go",
     },
   },
@@ -319,7 +326,12 @@ export const AFTER_APPROVAL: ScriptStep[] = [
 ];
 
 // Pushed once the live health probe is actually green again.
-export function resolutionSteps(opts: { durationSecs: number; euroLost: number; incidentId: string; probe: string }): ScriptStep[] {
+export function resolutionSteps(opts: {
+  durationSecs: number;
+  euroLost: number;
+  incidentId: string;
+  probe: string;
+}): ScriptStep[] {
   return [
     {
       delay: 0,

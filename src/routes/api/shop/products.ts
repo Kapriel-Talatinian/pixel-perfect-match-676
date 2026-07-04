@@ -12,7 +12,8 @@ export const Route = createFileRoute("/api/shop/products")({
         if (shopState.broken && Math.random() < 0.5) {
           recordHit(false, Date.now() - t);
           return new Response(JSON.stringify({ error: shopState.brokenReason }), {
-            status: 500, headers: { "content-type": "application/json" },
+            status: 500,
+            headers: { "content-type": "application/json" },
           });
         }
         recordHit(true, Date.now() - t);

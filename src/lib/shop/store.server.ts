@@ -10,11 +10,11 @@ export type Product = {
 export type ShopState = {
   products: Product[];
   orders: Array<{ id: string; total: number; items: number; at: number }>;
-  broken: boolean;         // toggled by /api/shop/admin/break
+  broken: boolean; // toggled by /api/shop/admin/break
   brokenSince: number | null;
   brokenReason: string;
   hits: { ok: number; err: number };
-  latencyMs: number;       // p95 sample
+  latencyMs: number; // p95 sample
 };
 
 const seed: Product[] = [

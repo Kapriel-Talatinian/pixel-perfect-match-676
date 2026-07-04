@@ -1,7 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 function xmlEscape(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function say(sayFr: string) {
@@ -34,7 +38,8 @@ function normalize(digits: string, speech: string): "go" | "rollback" | "wait" |
   if (!s.trim()) return null;
   if (/roll\s?back|annul|escalad|stop\b|surtout pas|non\b/.test(s)) return "rollback";
   if (/attend|wait|patiente|pas (tout de suite|encore)|plus tard/.test(s)) return "wait";
-  if (/\bgo\b|vas[- ]?y|vazy|c'est parti|lance|ouais|oui\b|ok\b|okay|d'accord|confirme/.test(s)) return "go";
+  if (/\bgo\b|vas[- ]?y|vazy|c'est parti|lance|ouais|oui\b|ok\b|okay|d'accord|confirme/.test(s))
+    return "go";
   return null;
 }
 
@@ -54,7 +59,10 @@ export const Route = createFileRoute("/api/public/mayday/voice-response")({
         const rec = incidentStore.get(id);
 
         const record = async (decision: "go" | "rollback" | "wait") => {
-          if (rec) { rec.decision = decision; rec.updatedAt = Date.now(); }
+          if (rec) {
+            rec.decision = decision;
+            rec.updatedAt = Date.now();
+          }
           // Mirror into the VM's shared decision state (edge isolates don't share memory).
           if (state && /^https?:\/\//.test(state)) {
             try {
@@ -64,7 +72,9 @@ export const Route = createFileRoute("/api/public/mayday/voice-response")({
                 body: JSON.stringify({ id, decision }),
                 signal: AbortSignal.timeout(3000),
               });
-            } catch { /* best effort */ }
+            } catch {
+              /* best effort */
+            }
           }
         };
 
@@ -74,11 +84,15 @@ export const Route = createFileRoute("/api/public/mayday/voice-response")({
 
         if (decision === "go") {
           await record("go");
-          return say("C'est parti. J'annule le commit fautif et je redéploie. Vérification dans quatre-vingt-dix secondes. Merci, vous pouvez raccrocher.");
+          return say(
+            "C'est parti. J'annule le commit fautif et je redéploie. Vérification dans quatre-vingt-dix secondes. Merci, vous pouvez raccrocher.",
+          );
         }
         if (decision === "rollback") {
           await record("rollback");
-          return say("Compris, je n'y touche pas. J'escalade à l'équipe d'astreinte avec toutes les preuves. Fin d'appel.");
+          return say(
+            "Compris, je n'y touche pas. J'escalade à l'équipe d'astreinte avec toutes les preuves. Fin d'appel.",
+          );
         }
         if (decision === "wait") {
           await record("wait");
@@ -91,7 +105,9 @@ export const Route = createFileRoute("/api/public/mayday/voice-response")({
           return reAsk(cb);
         }
         await record("wait");
-        return say("Réponse non reconnue. J'attends par défaut et je préviens l'équipe. Au revoir.");
+        return say(
+          "Réponse non reconnue. J'attends par défaut et je préviens l'équipe. Au revoir.",
+        );
       },
     },
   },

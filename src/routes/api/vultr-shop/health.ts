@@ -28,26 +28,41 @@ export const Route = createFileRoute("/api/vultr-shop/health")({
           const latency = Date.now() - t0;
           let body: unknown = null;
           const text = await r.text();
-          try { body = JSON.parse(text); } catch { body = text.slice(0, 200); }
-          const upstreamOk = r.ok && typeof body === "object" && body !== null
-            && (body as { status?: string }).status === "ok";
-          return Response.json({
-            ok: upstreamOk,
-            broken: !upstreamOk,
-            reason: upstreamOk ? "" : `upstream ${r.status} · ${JSON.stringify(body).slice(0, 120)}`,
-            latency_ms: latency,
-            target,
-            upstream_status: r.status,
-            upstream_body: body,
-          }, { headers: { "cache-control": "no-store" } });
+          try {
+            body = JSON.parse(text);
+          } catch {
+            body = text.slice(0, 200);
+          }
+          const upstreamOk =
+            r.ok &&
+            typeof body === "object" &&
+            body !== null &&
+            (body as { status?: string }).status === "ok";
+          return Response.json(
+            {
+              ok: upstreamOk,
+              broken: !upstreamOk,
+              reason: upstreamOk
+                ? ""
+                : `upstream ${r.status} · ${JSON.stringify(body).slice(0, 120)}`,
+              latency_ms: latency,
+              target,
+              upstream_status: r.status,
+              upstream_body: body,
+            },
+            { headers: { "cache-control": "no-store" } },
+          );
         } catch (e) {
-          return Response.json({
-            ok: false,
-            broken: true,
-            reason: `unreachable · ${(e as Error).message}`,
-            latency_ms: Date.now() - t0,
-            target,
-          }, { headers: { "cache-control": "no-store" } });
+          return Response.json(
+            {
+              ok: false,
+              broken: true,
+              reason: `unreachable · ${(e as Error).message}`,
+              latency_ms: Date.now() - t0,
+              target,
+            },
+            { headers: { "cache-control": "no-store" } },
+          );
         }
       },
     },

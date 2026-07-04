@@ -28,13 +28,20 @@ export const Route = createFileRoute("/api/shop/checkout")({
           const p = shopState.products.find((p) => p.id === it.id);
           if (!p || p.stock < it.qty) {
             recordHit(false, Date.now() - t);
-            return new Response(JSON.stringify({ error: "out_of_stock", id: it.id }), { status: 409 });
+            return new Response(JSON.stringify({ error: "out_of_stock", id: it.id }), {
+              status: 409,
+            });
           }
           p.stock -= it.qty;
           total += p.price * it.qty;
           count += it.qty;
         }
-        const order = { id: `ord_${Math.random().toString(36).slice(2, 8)}`, total, items: count, at: Date.now() };
+        const order = {
+          id: `ord_${Math.random().toString(36).slice(2, 8)}`,
+          total,
+          items: count,
+          at: Date.now(),
+        };
         shopState.orders.unshift(order);
         recordHit(true, Date.now() - t);
         return Response.json({ ok: true, order });
