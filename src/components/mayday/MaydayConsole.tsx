@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Link } from "@tanstack/react-router";
 import {
   Zap,
   RotateCcw,
@@ -694,6 +693,7 @@ export function MaydayConsole() {
         onToggleConfig={() => setShowConfig((v) => !v)}
         live={realCallEnabled}
         watching={watchShop}
+        shopHref={remoteShopUrl.trim() || "/shop"}
       />
 
       {showConfig && (
@@ -780,6 +780,7 @@ function Header({
   onToggleConfig,
   live,
   watching,
+  shopHref,
 }: {
   phase: Phase;
   isBroken: boolean;
@@ -793,6 +794,7 @@ function Header({
   onToggleConfig: () => void;
   live: boolean;
   watching: boolean;
+  shopHref: string;
 }) {
   const active = phase !== "idle";
   return (
@@ -856,12 +858,14 @@ function Header({
             </div>
           </div>
 
-          <Link
-            to="/shop"
+          <a
+            href={shopHref}
+            target="_blank"
+            rel="noreferrer"
             className="flex items-center gap-1.5 border border-border px-3 py-2 text-mono text-[11px] uppercase tracking-widest hover:bg-foreground hover:text-background"
           >
             <Store className="h-3.5 w-3.5" /> Shop <ArrowUpRight className="h-3 w-3" />
-          </Link>
+          </a>
           <button
             onClick={onToggleConfig}
             className={`flex items-center gap-1.5 border border-border px-3 py-2 text-mono text-[11px] uppercase tracking-widest ${showConfig ? "bg-foreground text-background" : "hover:bg-foreground hover:text-background"}`}
