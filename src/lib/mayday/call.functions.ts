@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import type { IncidentDecision } from "./store.server";
 
 function buildTwiml(brief: string, callbackUrl: string) {
   // Basic XML escape for the brief text
