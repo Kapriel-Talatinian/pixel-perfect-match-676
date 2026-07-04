@@ -89,6 +89,26 @@ def get_decision(id: str = ""):
     return {"id": id, "decision": DECISIONS.get(id)}
 
 
+# Live call status relay (Twilio StatusCallback → console) so the screen can
+# show "answered" the instant the on-call human picks up, even across isolates.
+CALL_STATUS: dict[str, str] = {}
+
+
+@app.post("/mayday/status")
+async def set_status(request: Request):
+    body = await request.json()
+    inc_id = str(body.get("id", ""))
+    status = str(body.get("status", ""))
+    if inc_id and status:
+        CALL_STATUS[inc_id] = status
+    return {"ok": True, "id": inc_id, "status": status}
+
+
+@app.get("/mayday/status")
+def get_status(id: str = ""):
+    return {"id": id, "status": CALL_STATUS.get(id)}
+
+
 @app.get("/products")
 def products():
     if STATE["broken"]:

@@ -613,7 +613,8 @@ export function MaydayConsole() {
       });
   }, [ringing, realCallEnabled, toNumber, fromNumber, twilioId, startCall]);
 
-  // Poll for the caller's decision (DTMF or speech), mirror it into the UI
+  // Poll the live call: show "answered" the instant the human picks up (Twilio
+  // StatusCallback), then mirror the decision (DTMF or speech) into the UI.
   useEffect(() => {
     if (!twilioId) return;
     if (phase === "resolved" || phase === "rejected" || phase === "idle") return;
@@ -622,6 +623,13 @@ export function MaydayConsole() {
         const r = await pollDecision({
           data: { id: twilioId, stateUrl: remoteUrlRef.current.trim() || undefined },
         });
+        // Answered → light up the screen and start the spoken brief, live.
+        const answered = r.callStatus === "in-progress" || r.callStatus === "answered";
+        if (answered && !callAnswered) {
+          setCallAnswered(true);
+          setBriefIndex(0);
+          setCallStatus(`Answered · ${toNumber} picked up — MAYDAY speaking`);
+        }
         if (r.decision) {
           window.clearInterval(id);
           pollRef.current = null;
@@ -635,13 +643,13 @@ export function MaydayConsole() {
       } catch {
         /* keep polling */
       }
-    }, 1500);
+    }, 1200);
     pollRef.current = id;
     return () => {
       window.clearInterval(id);
       pollRef.current = null;
     };
-  }, [twilioId, phase, pollDecision, decide, callAnswered]);
+  }, [twilioId, phase, pollDecision, decide, callAnswered, toNumber]);
 
   // Watchdog: poll internal + remote health; auto-trigger the loop on breakage.
   useEffect(() => {
@@ -1511,9 +1519,12 @@ function PhonePanel({
     if (phase === "resolved") return "call ended · resolved";
     if (phase === "rejected") return "call ended · human took over";
     if (phase === "fixing" || phase === "verifying") return "call ended · GO received";
-    if (callAnswered && !briefDone) return "MAYDAY speaking…";
-    if (callAnswered && briefDone) return "awaiting your reply";
-    if (ringing) return "ringing · answer the call";
+    if (callAnswered && !briefDone) return "● connected — MAYDAY speaking…";
+    if (callAnswered && briefDone) return "● connected — awaiting your reply";
+    if (ringing)
+      return realCallEnabled
+        ? "ringing your phone — pick up to connect"
+        : "ringing · answer the call";
     if (phase === "calling") return "dialing…";
     if (phase === "investigating" || phase === "deciding") return "not called yet";
     if (phase === "alert") return "—";
@@ -1572,17 +1583,35 @@ function PhonePanel({
             <div className="mt-0.5 text-mono text-base font-bold tabular-nums">
               {maskPhone(toNumber)}
             </div>
-            <div className="mt-1 text-mono text-[11px] text-muted-foreground">{statusLine}</div>
+            <div
+              className={`mt-1 text-mono text-[11px] ${callAnswered ? "font-bold text-success" : "text-muted-foreground"}`}
+            >
+              {statusLine}
+            </div>
           </div>
         </div>
 
-        {ringing && !callAnswered && (
+        {/* Keynote moment: the screen lights up the instant the human picks up. */}
+        {callAnswered && (
+          <div className="mt-4 flex items-center justify-center gap-2 border border-success bg-success/10 px-4 py-3 text-mono text-sm font-bold uppercase tracking-widest text-success">
+            <span className="h-2.5 w-2.5 rounded-full bg-success pulse-dot" />
+            Connected · on-call picked up
+          </div>
+        )}
+
+        {/* Simulation only: click to answer. In a real call, the phone answers. */}
+        {ringing && !callAnswered && !realCallEnabled && (
           <button
             onClick={onAnswer}
             className="mt-4 flex w-full items-center justify-center gap-2 bg-warning px-4 py-3 text-sm font-bold text-white hover:brightness-110 active:scale-95"
           >
             <PhoneCall className="h-4 w-4" /> Answer call
           </button>
+        )}
+        {ringing && !callAnswered && realCallEnabled && (
+          <div className="mt-4 flex w-full items-center justify-center gap-2 border border-warning px-4 py-3 text-sm font-bold text-warning">
+            <PhoneIncoming className="h-4 w-4 ring-shake" /> Ringing your phone…
+          </div>
         )}
       </div>
 

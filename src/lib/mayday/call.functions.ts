@@ -58,10 +58,20 @@ async function placeCall(
   from: string,
   twiml: string,
   sendDigits?: string,
+  statusCallback?: string,
 ): Promise<{ sid?: string }> {
   const body = new URLSearchParams({ To: to, From: from, Twiml: twiml });
   // Auto-press digits after answer — used for human-free end-to-end call tests.
   if (sendDigits) body.set("SendDigits", sendDigits);
+  // Real-time call lifecycle events so the screen can show "answered" the
+  // instant the on-call human picks up (keynote-style live status).
+  if (statusCallback) {
+    body.set("StatusCallback", statusCallback);
+    body.append("StatusCallbackEvent", "ringing");
+    body.append("StatusCallbackEvent", "answered");
+    body.append("StatusCallbackEvent", "completed");
+    body.set("StatusCallbackMethod", "POST");
+  }
 
   // Preferred: direct Twilio REST API (API Key SK+secret, or Account SID + auth token).
   const creds = twilioCreds();
@@ -141,13 +151,16 @@ export async function placeMaydayCall(opts: {
     to: opts.to,
     from: opts.from,
     brief: PHONE_BRIEF_FR,
+    callStatus: "queued",
     decision: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   });
 
+  const statusCallback = `${opts.origin}/api/public/mayday/status?id=${encodeURIComponent(id)}${state ? `&state=${encodeURIComponent(state)}` : ""}`;
+
   try {
-    const payload = await placeCall(opts.to, opts.from, twiml, opts.sendDigits);
+    const payload = await placeCall(opts.to, opts.from, twiml, opts.sendDigits, statusCallback);
     const rec = incidentStore.get(id)!;
     rec.callSid = payload.sid;
     rec.updatedAt = Date.now();
@@ -190,28 +203,42 @@ export const getIncidentDecision = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { incidentStore } = await import("./store.server");
     const rec = incidentStore.get(data.id);
-    if (rec?.decision) return { decision: rec.decision, exists: true };
+    let callStatus = rec?.callStatus ?? null;
+    if (rec?.decision) return { decision: rec.decision, callStatus, exists: true };
 
-    // Fallback: read the shared decision state held by the VM shop.
+    // Fallback: read the shared decision + call status held by the VM shop
+    // (needed on multi-isolate deploys where in-memory isn't shared).
     const state = safeHttpUrl(data.stateUrl);
     if (state) {
       try {
-        const r = await fetch(`${state}/mayday/decision?id=${encodeURIComponent(data.id)}`, {
-          signal: AbortSignal.timeout(3000),
-        });
-        if (r.ok) {
-          const j = (await r.json()) as { decision?: string | null };
+        const [dRes, sRes] = await Promise.all([
+          fetch(`${state}/mayday/decision?id=${encodeURIComponent(data.id)}`, {
+            signal: AbortSignal.timeout(3000),
+          }),
+          fetch(`${state}/mayday/status?id=${encodeURIComponent(data.id)}`, {
+            signal: AbortSignal.timeout(3000),
+          }).catch(() => null),
+        ]);
+        if (sRes && sRes.ok) {
+          const s = (await sRes.json()) as { status?: string | null };
+          if (s.status) {
+            callStatus = s.status as typeof callStatus;
+            if (rec) rec.callStatus = callStatus;
+          }
+        }
+        if (dRes.ok) {
+          const j = (await dRes.json()) as { decision?: string | null };
           if (j.decision === "go" || j.decision === "rollback" || j.decision === "wait") {
             if (rec) {
               rec.decision = j.decision;
               rec.updatedAt = Date.now();
             }
-            return { decision: j.decision as IncidentDecision, exists: true };
+            return { decision: j.decision as IncidentDecision, callStatus, exists: true };
           }
         }
       } catch {
         /* VM unreachable — keep polling */
       }
     }
-    return { decision: null as IncidentDecision, exists: !!rec };
+    return { decision: null as IncidentDecision, callStatus, exists: !!rec };
   });
