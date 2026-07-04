@@ -41,15 +41,27 @@ npm run dev        # http://localhost:8080
 | VM URL | `http://192.248.185.175` — le shop live sur Vultr |
 | Token | optionnel, si le vm-shop est lancé avec `ADMIN_TOKEN` |
 
-### Clés Twilio
+### Clés (Twilio + Gradium)
 
-Poser dans l'environnement du serveur (`.env`, secrets Lovable, etc. — voir `.env.example`) :
-`TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` (ou le connecteur Lovable).
-**Important :** le webhook vocal doit être joignable par Twilio ⇒ l'appel réel ne
+Poser dans l'environnement du serveur (`.env` en local — chargé automatiquement par
+`npm run dev` —, secrets Lovable en prod ; voir `.env.example`) :
+
+| Var | Rôle |
+|---|---|
+| `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` | appel sortant + téléchargement de l'enregistrement |
+| `GRADIUM_API_KEY` | voix réelles : **Gradium TTS** (brief parlé) + **Gradium STT** (compréhension de la réponse) |
+| `GRADIUM_VOICE_ID` | optionnel — défaut Elise (fr) ; Leo `axlOaUiFyOZhy4nv`, Olivier `vMYQUSzm6GRkJX6d` |
+
+Le panneau CONFIG affiche en direct ce que le serveur sait faire
+(« Twilio ■ direct · Gradium ■ TTS+STT »). Sans clé Gradium ⇒ fallback automatique
+Polly/`<Gather>` (Twilio ASR). Sans clés Twilio ⇒ mode simulation à l'écran.
+**Important :** les webhooks doivent être joignables par Twilio ⇒ l'appel réel ne
 fonctionne que sur l'app **déployée** (URL publique), pas sur localhost.
 
-Au téléphone : dire **« GO »**, **« ROLLBACK »** ou **« WAIT »** (fr, STT Twilio) — ou
-taper **1 / 2 / 3**. Réponse incomprise ⇒ re-demande une fois ⇒ défaut WAIT.
+Flux Gradium : TwiML `<Play>` d'une URL TTS signée (HMAC — personne d'autre ne peut
+consommer les crédits) → `<Record>` de la réponse → webhook télécharge l'audio chez
+Twilio → **Gradium STT (fr)** → « ouais vas-y go » ⇒ GO. Touches **1/2/3** en secours
+(finissent l'enregistrement). Incompris ⇒ re-demande une fois ⇒ défaut WAIT.
 WAIT ⇒ MAYDAY rappelle 20 s plus tard tant que le service est down.
 
 ## Scénario scène (3 min)

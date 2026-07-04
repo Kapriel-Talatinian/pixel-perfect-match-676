@@ -34,3 +34,6 @@ dist-ssr
 # Python
 __pycache__/
 *.pyc
+
+# env secrets
+.env

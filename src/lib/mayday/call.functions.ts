@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import type { IncidentDecision } from "./store.server";
+import { gradiumConfigured, gradiumVoiceId, ttsUrl } from "./gradium.server";
 
 function xmlEscape(s: string) {
   return s
@@ -16,7 +17,8 @@ export const PHONE_BRIEF_FR =
   "Cause : le commit abc123 a pointé le service d'inventaire vers un port mort. " +
   "Impact : cent cinquante euros par minute. Je propose d'annuler ce commit, redéploiement en quatre-vingt-dix secondes.";
 
-function buildTwiml(brief: string, callbackUrl: string) {
+// Fallback flow (no Gradium key): Polly TTS + Twilio ASR via <Gather>.
+function buildPollyTwiml(brief: string, callbackUrl: string) {
   const safe = xmlEscape(brief);
   const cb = xmlEscape(callbackUrl);
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -27,6 +29,26 @@ function buildTwiml(brief: string, callbackUrl: string) {
     <Say voice="Polly.Lea-Neural" language="fr-FR">Dites GO pour lancer le correctif, ROLLBACK pour annuler et escalader, ou WAIT pour attendre. Vous pouvez aussi taper 1, 2 ou 3.</Say>
   </Gather>
   <Say voice="Polly.Lea-Neural" language="fr-FR">Aucune réponse détectée. J'attends. Au revoir.</Say>
+</Response>`;
+}
+
+// Real voice flow: Gradium TTS speaks the brief (<Play> of our signed TTS
+// route), <Record> captures the spoken reply, the recording webhook runs
+// Gradium STT. Digits 1/2/3 still work via finishOnKey. If the caller stays
+// fully silent, <Redirect> forces the n=2 path which defaults to "wait".
+async function buildGradiumTwiml(origin: string, id: string, state: string | null) {
+  const stateQ = state ? `&state=${encodeURIComponent(state)}` : "";
+  const cb = `${origin}/api/public/mayday/recording?id=${encodeURIComponent(id)}${stateQ}`;
+  const spoken =
+    `${PHONE_BRIEF_FR} Après le bip, dites GO pour lancer le correctif, ` +
+    `ROLLBACK pour annuler et escalader, ou WAIT pour attendre. Vous pouvez aussi taper 1, 2 ou 3.`;
+  const audio = xmlEscape(await ttsUrl(origin, spoken));
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Pause length="1"/>
+  <Play>${audio}</Play>
+  <Record action="${xmlEscape(cb)}" method="POST" maxLength="7" timeout="4" playBeep="true" trim="trim-silence" finishOnKey="123"/>
+  <Redirect method="POST">${xmlEscape(`${cb}&n=2`)}</Redirect>
 </Response>`;
 }
 
@@ -42,8 +64,9 @@ async function placeCall(to: string, from: string, twiml: string): Promise<{ sid
   // Preferred: direct Twilio REST API with real credentials.
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const twilioBase = (process.env.TWILIO_API_BASE || "https://api.twilio.com").replace(/\/$/, "");
   if (accountSid && authToken) {
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
+    const res = await fetch(`${twilioBase}/2010-04-01/Accounts/${accountSid}/Calls.json`, {
       method: "POST",
       headers: {
         Authorization: `Basic ${basicAuth(accountSid, authToken)}`,
@@ -107,8 +130,11 @@ export const startMaydayCall = createServerFn({ method: "POST" })
     // The VM shop (single process) doubles as shared decision state so the
     // phone webhook and the polling UI agree even across stateless edge isolates.
     const state = safeHttpUrl(data.stateUrl);
+    const useGradium = gradiumConfigured();
     const callback = `${origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}${state ? `&state=${encodeURIComponent(state)}` : ""}`;
-    const twiml = buildTwiml(PHONE_BRIEF_FR, callback);
+    const twiml = useGradium
+      ? await buildGradiumTwiml(origin, id, state)
+      : buildPollyTwiml(PHONE_BRIEF_FR, callback);
 
     incidentStore.set(id, {
       id,
@@ -125,12 +151,21 @@ export const startMaydayCall = createServerFn({ method: "POST" })
       const rec = incidentStore.get(id)!;
       rec.callSid = payload.sid;
       rec.updatedAt = Date.now();
-      return { id, callSid: payload.sid ?? null };
+      return { id, callSid: payload.sid ?? null, voice: useGradium ? "gradium" : "polly" };
     } catch (e) {
       incidentStore.delete(id);
       throw e;
     }
   });
+
+// What the server can actually do right now — shown in the CONFIG panel so
+// the operator sees at a glance whether the real call will work.
+export const getVoiceStatus = createServerFn({ method: "GET" }).handler(async () => ({
+  twilioDirect: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
+  twilioConnector: !!(process.env.LOVABLE_API_KEY && process.env.TWILIO_API_KEY),
+  gradium: gradiumConfigured(),
+  gradiumVoice: gradiumVoiceId(),
+}));
 
 export const getIncidentDecision = createServerFn({ method: "GET" })
   .inputValidator((input: { id: string; stateUrl?: string }) => input)

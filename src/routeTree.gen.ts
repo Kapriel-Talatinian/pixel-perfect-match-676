@@ -18,6 +18,8 @@ import { Route as ApiShopHealthRouteImport } from './routes/api/shop/health'
 import { Route as ApiShopCheckoutRouteImport } from './routes/api/shop/checkout'
 import { Route as ApiShopAdminBreakRouteImport } from './routes/api/shop/admin.break'
 import { Route as ApiPublicMaydayVoiceResponseRouteImport } from './routes/api/public/mayday/voice-response'
+import { Route as ApiPublicMaydayTtsRouteImport } from './routes/api/public/mayday/tts'
+import { Route as ApiPublicMaydayRecordingRouteImport } from './routes/api/public/mayday/recording'
 
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
@@ -65,6 +67,17 @@ const ApiPublicMaydayVoiceResponseRoute =
     path: '/api/public/mayday/voice-response',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicMaydayTtsRoute = ApiPublicMaydayTtsRouteImport.update({
+  id: '/api/public/mayday/tts',
+  path: '/api/public/mayday/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMaydayRecordingRoute =
+  ApiPublicMaydayRecordingRouteImport.update({
+    id: '/api/public/mayday/recording',
+    path: '/api/public/mayday/recording',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -74,6 +87,8 @@ export interface FileRoutesByFullPath {
   '/api/shop/products': typeof ApiShopProductsRoute
   '/api/vultr-shop/break': typeof ApiVultrShopBreakRoute
   '/api/vultr-shop/health': typeof ApiVultrShopHealthRoute
+  '/api/public/mayday/recording': typeof ApiPublicMaydayRecordingRoute
+  '/api/public/mayday/tts': typeof ApiPublicMaydayTtsRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
   '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
 }
@@ -85,6 +100,8 @@ export interface FileRoutesByTo {
   '/api/shop/products': typeof ApiShopProductsRoute
   '/api/vultr-shop/break': typeof ApiVultrShopBreakRoute
   '/api/vultr-shop/health': typeof ApiVultrShopHealthRoute
+  '/api/public/mayday/recording': typeof ApiPublicMaydayRecordingRoute
+  '/api/public/mayday/tts': typeof ApiPublicMaydayTtsRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
   '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
 }
@@ -97,6 +114,8 @@ export interface FileRoutesById {
   '/api/shop/products': typeof ApiShopProductsRoute
   '/api/vultr-shop/break': typeof ApiVultrShopBreakRoute
   '/api/vultr-shop/health': typeof ApiVultrShopHealthRoute
+  '/api/public/mayday/recording': typeof ApiPublicMaydayRecordingRoute
+  '/api/public/mayday/tts': typeof ApiPublicMaydayTtsRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
   '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
 }
@@ -110,6 +129,8 @@ export interface FileRouteTypes {
     | '/api/shop/products'
     | '/api/vultr-shop/break'
     | '/api/vultr-shop/health'
+    | '/api/public/mayday/recording'
+    | '/api/public/mayday/tts'
     | '/api/public/mayday/voice-response'
     | '/api/shop/admin/break'
   fileRoutesByTo: FileRoutesByTo
@@ -121,6 +142,8 @@ export interface FileRouteTypes {
     | '/api/shop/products'
     | '/api/vultr-shop/break'
     | '/api/vultr-shop/health'
+    | '/api/public/mayday/recording'
+    | '/api/public/mayday/tts'
     | '/api/public/mayday/voice-response'
     | '/api/shop/admin/break'
   id:
@@ -132,6 +155,8 @@ export interface FileRouteTypes {
     | '/api/shop/products'
     | '/api/vultr-shop/break'
     | '/api/vultr-shop/health'
+    | '/api/public/mayday/recording'
+    | '/api/public/mayday/tts'
     | '/api/public/mayday/voice-response'
     | '/api/shop/admin/break'
   fileRoutesById: FileRoutesById
@@ -144,6 +169,8 @@ export interface RootRouteChildren {
   ApiShopProductsRoute: typeof ApiShopProductsRoute
   ApiVultrShopBreakRoute: typeof ApiVultrShopBreakRoute
   ApiVultrShopHealthRoute: typeof ApiVultrShopHealthRoute
+  ApiPublicMaydayRecordingRoute: typeof ApiPublicMaydayRecordingRoute
+  ApiPublicMaydayTtsRoute: typeof ApiPublicMaydayTtsRoute
   ApiPublicMaydayVoiceResponseRoute: typeof ApiPublicMaydayVoiceResponseRoute
   ApiShopAdminBreakRoute: typeof ApiShopAdminBreakRoute
 }
@@ -213,6 +240,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMaydayVoiceResponseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mayday/tts': {
+      id: '/api/public/mayday/tts'
+      path: '/api/public/mayday/tts'
+      fullPath: '/api/public/mayday/tts'
+      preLoaderRoute: typeof ApiPublicMaydayTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/mayday/recording': {
+      id: '/api/public/mayday/recording'
+      path: '/api/public/mayday/recording'
+      fullPath: '/api/public/mayday/recording'
+      preLoaderRoute: typeof ApiPublicMaydayRecordingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -224,6 +265,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiShopProductsRoute: ApiShopProductsRoute,
   ApiVultrShopBreakRoute: ApiVultrShopBreakRoute,
   ApiVultrShopHealthRoute: ApiVultrShopHealthRoute,
+  ApiPublicMaydayRecordingRoute: ApiPublicMaydayRecordingRoute,
+  ApiPublicMaydayTtsRoute: ApiPublicMaydayTtsRoute,
   ApiPublicMaydayVoiceResponseRoute: ApiPublicMaydayVoiceResponseRoute,
   ApiShopAdminBreakRoute: ApiShopAdminBreakRoute,
 }

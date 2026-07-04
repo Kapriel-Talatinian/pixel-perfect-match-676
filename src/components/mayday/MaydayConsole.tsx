@@ -29,7 +29,14 @@ import {
   type ScriptStep,
   type TimelineEvent,
 } from "@/lib/mayday/script";
-import { getIncidentDecision, startMaydayCall } from "@/lib/mayday/call.functions";
+import { getIncidentDecision, getVoiceStatus, startMaydayCall } from "@/lib/mayday/call.functions";
+
+type VoiceStatus = {
+  twilioDirect: boolean;
+  twilioConnector: boolean;
+  gradium: boolean;
+  gradiumVoice: string;
+};
 
 const GREEN_METRICS: Metrics = { error_rate: 0.006, p95_ms: 168, rps: 58, green: true };
 
@@ -137,6 +144,7 @@ export function MaydayConsole() {
   const [liveHealth, setLiveHealth] = useState<Health | null>(null);
   const [remoteStatus, setRemoteStatus] = useState<string>("");
   const [remoteBusy, setRemoteBusy] = useState<null | "break" | "repair">(null);
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
 
   const timeoutsRef = useRef<number[]>([]);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -181,6 +189,15 @@ export function MaydayConsole() {
 
   const startCall = useServerFn(startMaydayCall);
   const pollDecision = useServerFn(getIncidentDecision);
+  const fetchVoiceStatus = useServerFn(getVoiceStatus);
+
+  // What can the server really do (Twilio creds? Gradium key?) — shown in CONFIG.
+  useEffect(() => {
+    fetchVoiceStatus({})
+      .then((v) => setVoiceStatus(v as VoiceStatus))
+      .catch(() => setVoiceStatus(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const clearTimers = useCallback(() => {
     timeoutsRef.current.forEach((t) => clearTimeout(t));
@@ -689,6 +706,7 @@ export function MaydayConsole() {
           remoteBusy={remoteBusy}
           onRemoteAction={remoteAction}
           callStatus={callStatus}
+          voiceStatus={voiceStatus}
           onClose={() => setShowConfig(false)}
         />
       )}
@@ -715,6 +733,7 @@ export function MaydayConsole() {
               realCallEnabled={realCallEnabled}
               callStatus={callStatus}
               toNumber={toNumber}
+              gradiumOn={voiceStatus?.gradium ?? false}
             />
           </div>
         </div>
@@ -892,6 +911,7 @@ function ConfigPanel({
   remoteBusy,
   onRemoteAction,
   callStatus,
+  voiceStatus,
   onClose,
 }: {
   toNumber: string;
@@ -910,6 +930,7 @@ function ConfigPanel({
   remoteBusy: null | "break" | "repair";
   onRemoteAction: (a: "break" | "repair") => void;
   callStatus: string;
+  voiceStatus: VoiceStatus | null;
   onClose: () => void;
 }) {
   const input =
@@ -955,6 +976,25 @@ function ConfigPanel({
               {callStatus}
             </div>
           )}
+          <div className="flex flex-wrap gap-1.5 text-mono text-[10px] uppercase tracking-widest">
+            <span
+              className={`border px-1.5 py-0.5 ${voiceStatus?.twilioDirect || voiceStatus?.twilioConnector ? "border-border" : "border-danger text-danger"}`}
+            >
+              Twilio{" "}
+              {voiceStatus?.twilioDirect
+                ? "■ direct"
+                : voiceStatus?.twilioConnector
+                  ? "■ connector"
+                  : "□ no keys"}
+            </span>
+            <span
+              className={`border px-1.5 py-0.5 ${voiceStatus?.gradium ? "border-border" : "border-border text-muted-foreground"}`}
+            >
+              {voiceStatus?.gradium
+                ? `Gradium ■ TTS+STT · voice ${voiceStatus.gradiumVoice.slice(0, 6)}…`
+                : "Gradium □ off → Polly fallback"}
+            </span>
+          </div>
           <p className="text-mono text-[10px] text-muted-foreground">
             Answer the call, then say « GO », « ROLLBACK » or « WAIT » — or press 1 / 2 / 3.
           </p>
@@ -1365,6 +1405,7 @@ function PhonePanel({
   realCallEnabled,
   callStatus,
   toNumber,
+  gradiumOn,
 }: {
   ringing: boolean;
   phase: Phase;
@@ -1376,6 +1417,7 @@ function PhonePanel({
   realCallEnabled: boolean;
   callStatus: string;
   toNumber: string;
+  gradiumOn: boolean;
 }) {
   const awaiting = phase === "awaiting_approval" || phase === "ringing";
   const canDecide = callAnswered && briefDone && awaiting;
@@ -1407,7 +1449,11 @@ function PhonePanel({
         <span
           className={`text-mono text-[10px] uppercase tracking-widest ${realCallEnabled ? "" : "text-muted-foreground"}`}
         >
-          {realCallEnabled ? "■ LIVE · Twilio" : "□ simulation"}
+          {realCallEnabled
+            ? gradiumOn
+              ? "■ LIVE · Twilio + Gradium"
+              : "■ LIVE · Twilio"
+            : "□ simulation"}
         </span>
       </div>
 

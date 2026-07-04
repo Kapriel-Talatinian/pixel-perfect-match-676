@@ -1,4 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  CONFIRM_FR,
+  DEFAULT_WAIT_FR,
+  REASK_FR,
+  normalizeReply,
+  recordDecision,
+} from "@/lib/mayday/voice.server";
 
 function xmlEscape(s: string) {
   return s
@@ -21,7 +28,7 @@ function reAsk(callbackUrl: string) {
     `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="dtmf speech" language="fr-FR" numDigits="1" timeout="10" speechTimeout="auto" hints="go, rollback, wait, vas-y, attends, annule" action="${cb}" method="POST">
-    <Say voice="Polly.Lea-Neural" language="fr-FR">Je n'ai pas compris. Dites GO, ROLLBACK, ou WAIT. Ou tapez 1, 2 ou 3.</Say>
+    <Say voice="Polly.Lea-Neural" language="fr-FR">${xmlEscape(REASK_FR)}</Say>
   </Gather>
   <Say voice="Polly.Lea-Neural" language="fr-FR">Toujours rien. J'attends par défaut. Au revoir.</Say>
 </Response>`,
@@ -29,20 +36,7 @@ function reAsk(callbackUrl: string) {
   );
 }
 
-// Normalize a spoken reply or DTMF digit to a decision.
-function normalize(digits: string, speech: string): "go" | "rollback" | "wait" | null {
-  if (digits === "1") return "go";
-  if (digits === "2") return "rollback";
-  if (digits === "3") return "wait";
-  const s = speech.toLowerCase();
-  if (!s.trim()) return null;
-  if (/roll\s?back|annul|escalad|stop\b|surtout pas|non\b/.test(s)) return "rollback";
-  if (/attend|wait|patiente|pas (tout de suite|encore)|plus tard/.test(s)) return "wait";
-  if (/\bgo\b|vas[- ]?y|vazy|c'est parti|lance|ouais|oui\b|ok\b|okay|d'accord|confirme/.test(s))
-    return "go";
-  return null;
-}
-
+// Fallback webhook (Polly/<Gather> flow): Twilio's own ASR or DTMF digits.
 export const Route = createFileRoute("/api/public/mayday/voice-response")({
   server: {
     handlers: {
@@ -56,47 +50,12 @@ export const Route = createFileRoute("/api/public/mayday/voice-response")({
         const speech = String(form.get("SpeechResult") ?? "");
 
         const { incidentStore } = await import("@/lib/mayday/store.server");
-        const rec = incidentStore.get(id);
+        if (!incidentStore.get(id) && !state) return say("Incident inconnu. Fin d'appel.");
 
-        const record = async (decision: "go" | "rollback" | "wait") => {
-          if (rec) {
-            rec.decision = decision;
-            rec.updatedAt = Date.now();
-          }
-          // Mirror into the VM's shared decision state (edge isolates don't share memory).
-          if (state && /^https?:\/\//.test(state)) {
-            try {
-              await fetch(`${new URL(state).origin}/mayday/decision`, {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ id, decision }),
-                signal: AbortSignal.timeout(3000),
-              });
-            } catch {
-              /* best effort */
-            }
-          }
-        };
-
-        if (!rec && !state) return say("Incident inconnu. Fin d'appel.");
-
-        const decision = normalize(digits, speech);
-
-        if (decision === "go") {
-          await record("go");
-          return say(
-            "C'est parti. J'annule le commit fautif et je redéploie. Vérification dans quatre-vingt-dix secondes. Merci, vous pouvez raccrocher.",
-          );
-        }
-        if (decision === "rollback") {
-          await record("rollback");
-          return say(
-            "Compris, je n'y touche pas. J'escalade à l'équipe d'astreinte avec toutes les preuves. Fin d'appel.",
-          );
-        }
-        if (decision === "wait") {
-          await record("wait");
-          return say("Très bien, j'attends. Je vous rappelle si la situation empire.");
+        const decision = normalizeReply(digits, speech);
+        if (decision) {
+          await recordDecision(id, decision, state);
+          return say(CONFIRM_FR[decision]);
         }
 
         // Unclear reply → re-ask once, then default to wait.
@@ -104,10 +63,8 @@ export const Route = createFileRoute("/api/public/mayday/voice-response")({
           const cb = `${url.origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}${state ? `&state=${encodeURIComponent(state)}` : ""}&n=2`;
           return reAsk(cb);
         }
-        await record("wait");
-        return say(
-          "Réponse non reconnue. J'attends par défaut et je préviens l'équipe. Au revoir.",
-        );
+        await recordDecision(id, "wait", state);
+        return say(DEFAULT_WAIT_FR);
       },
     },
   },
