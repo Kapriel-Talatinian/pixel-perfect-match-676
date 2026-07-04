@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiVultrShopHealthRouteImport } from './routes/api/vultr-shop/health'
 import { Route as ApiShopProductsRouteImport } from './routes/api/shop/products'
 import { Route as ApiShopHealthRouteImport } from './routes/api/shop/health'
 import { Route as ApiShopCheckoutRouteImport } from './routes/api/shop/checkout'
@@ -25,6 +26,11 @@ const ShopRoute = ShopRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVultrShopHealthRoute = ApiVultrShopHealthRouteImport.update({
+  id: '/api/vultr-shop/health',
+  path: '/api/vultr-shop/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiShopProductsRoute = ApiShopProductsRouteImport.update({
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/api/shop/checkout': typeof ApiShopCheckoutRoute
   '/api/shop/health': typeof ApiShopHealthRoute
   '/api/shop/products': typeof ApiShopProductsRoute
+  '/api/vultr-shop/health': typeof ApiVultrShopHealthRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
   '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
 }
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/api/shop/checkout': typeof ApiShopCheckoutRoute
   '/api/shop/health': typeof ApiShopHealthRoute
   '/api/shop/products': typeof ApiShopProductsRoute
+  '/api/vultr-shop/health': typeof ApiVultrShopHealthRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
   '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
 }
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/api/shop/checkout': typeof ApiShopCheckoutRoute
   '/api/shop/health': typeof ApiShopHealthRoute
   '/api/shop/products': typeof ApiShopProductsRoute
+  '/api/vultr-shop/health': typeof ApiVultrShopHealthRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
   '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
 }
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/api/shop/checkout'
     | '/api/shop/health'
     | '/api/shop/products'
+    | '/api/vultr-shop/health'
     | '/api/public/mayday/voice-response'
     | '/api/shop/admin/break'
   fileRoutesByTo: FileRoutesByTo
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/api/shop/checkout'
     | '/api/shop/health'
     | '/api/shop/products'
+    | '/api/vultr-shop/health'
     | '/api/public/mayday/voice-response'
     | '/api/shop/admin/break'
   id:
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/api/shop/checkout'
     | '/api/shop/health'
     | '/api/shop/products'
+    | '/api/vultr-shop/health'
     | '/api/public/mayday/voice-response'
     | '/api/shop/admin/break'
   fileRoutesById: FileRoutesById
@@ -118,6 +130,7 @@ export interface RootRouteChildren {
   ApiShopCheckoutRoute: typeof ApiShopCheckoutRoute
   ApiShopHealthRoute: typeof ApiShopHealthRoute
   ApiShopProductsRoute: typeof ApiShopProductsRoute
+  ApiVultrShopHealthRoute: typeof ApiVultrShopHealthRoute
   ApiPublicMaydayVoiceResponseRoute: typeof ApiPublicMaydayVoiceResponseRoute
   ApiShopAdminBreakRoute: typeof ApiShopAdminBreakRoute
 }
@@ -136,6 +149,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/vultr-shop/health': {
+      id: '/api/vultr-shop/health'
+      path: '/api/vultr-shop/health'
+      fullPath: '/api/vultr-shop/health'
+      preLoaderRoute: typeof ApiVultrShopHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/shop/products': {
@@ -182,6 +202,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiShopCheckoutRoute: ApiShopCheckoutRoute,
   ApiShopHealthRoute: ApiShopHealthRoute,
   ApiShopProductsRoute: ApiShopProductsRoute,
+  ApiVultrShopHealthRoute: ApiVultrShopHealthRoute,
   ApiPublicMaydayVoiceResponseRoute: ApiPublicMaydayVoiceResponseRoute,
   ApiShopAdminBreakRoute: ApiShopAdminBreakRoute,
 }

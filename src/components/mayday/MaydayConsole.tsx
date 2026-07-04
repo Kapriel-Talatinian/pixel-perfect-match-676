@@ -64,6 +64,8 @@ export function MaydayConsole() {
   const [callStatus, setCallStatus] = useState<string>("");
   const [incidentId, setIncidentId] = useState<string | null>(null);
   const [watchShop, setWatchShop] = useState<boolean>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.watch") === "1") || false);
+  const [remoteShopUrl, setRemoteShopUrl] = useState<string>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.remote")) || "http://192.248.185.175");
+  const [remoteStatus, setRemoteStatus] = useState<string>("");
 
   const timeoutsRef = useRef<number[]>([]);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -73,6 +75,7 @@ export function MaydayConsole() {
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.from", fromNumber); }, [fromNumber]);
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.real", realCallEnabled ? "1" : "0"); }, [realCallEnabled]);
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.watch", watchShop ? "1" : "0"); }, [watchShop]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.remote", remoteShopUrl); }, [remoteShopUrl]);
 
   const startCall = useServerFn(startMaydayCall);
   const pollDecision = useServerFn(getIncidentDecision);
@@ -251,22 +254,42 @@ export function MaydayConsole() {
     return () => { window.clearInterval(id); pollRef.current = null; };
   }, [incidentId, phase, pollDecision, decide, callAnswered]);
 
-  // Watchdog: poll the real /shop /api/shop/health and auto-trigger the flow when broken
+  // Watchdog: poll internal /api/shop/health AND remote shop via server-side proxy
   useEffect(() => {
     if (!watchShop) return;
     const canTrigger = () => phase === "idle" || phase === "resolved" || phase === "rejected";
     const tick = async () => {
+      let broken = false;
+      let reason = "";
+      // internal demo shop
       try {
         const r = await fetch("/api/shop/health", { cache: "no-store" });
         const h = await r.json();
-        if (h.broken && canTrigger()) breakProduction();
+        if (h.broken) { broken = true; reason = `internal shop · ${h.reason}`; }
       } catch { /* ignore */ }
+      // remote real shop (via proxy, no CORS issues)
+      if (remoteShopUrl.trim()) {
+        try {
+          const r = await fetch(`/api/vultr-shop/health?url=${encodeURIComponent(remoteShopUrl.trim())}`, { cache: "no-store" });
+          const h = await r.json();
+          setRemoteStatus(h.ok ? `remote OK · ${h.latency_ms}ms` : `remote DOWN · ${h.reason ?? "?"}`);
+          if (h.broken && !broken) { broken = true; reason = `remote shop · ${h.reason}`; }
+        } catch (e) {
+          setRemoteStatus(`remote error · ${(e as Error).message}`);
+        }
+      } else {
+        setRemoteStatus("");
+      }
+      if (broken && canTrigger()) {
+        setCallStatus(reason);
+        breakProduction();
+      }
     };
     tick();
-    const id = window.setInterval(tick, 2500);
+    const id = window.setInterval(tick, 3000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchShop, phase]);
+  }, [watchShop, phase, remoteShopUrl]);
 
 
 
@@ -301,6 +324,12 @@ export function MaydayConsole() {
           callStatus={callStatus}
           watchShop={watchShop}
           setWatchShop={setWatchShop}
+        />
+        <RemoteShopBar
+          url={remoteShopUrl}
+          setUrl={setRemoteShopUrl}
+          status={remoteStatus}
+          watching={watchShop}
         />
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)_360px]">
           <ShopPanel metrics={metrics} phase={phase} />
@@ -984,6 +1013,42 @@ function TwilioSettings({
       {callStatus && (
         <span className="shrink-0 text-mono text-[11px] text-foreground">{callStatus}</span>
       )}
+    </section>
+  );
+}
+
+function RemoteShopBar({
+  url,
+  setUrl,
+  status,
+  watching,
+}: {
+  url: string;
+  setUrl: (v: string) => void;
+  status: string;
+  watching: boolean;
+}) {
+  const ok = status.startsWith("remote OK");
+  const down = status.startsWith("remote DOWN") || status.startsWith("remote error");
+  return (
+    <section className="panel mt-3 flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 ${watching ? (ok ? "bg-primary pulse-dot" : down ? "bg-danger pulse-dot" : "bg-warning") : "bg-muted-foreground/40"}`} />
+        <span className="text-mono text-[10px] uppercase tracking-widest text-muted-foreground">Vultr shop</span>
+      </div>
+      <label className="flex flex-1 items-center gap-2 text-mono text-xs">
+        <span className="w-20 shrink-0 text-muted-foreground">URL</span>
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value.trim())}
+          placeholder="http://192.248.185.175"
+          className="min-w-0 flex-1 border border-border bg-background/60 px-2.5 py-1.5 text-mono text-xs outline-none focus:border-primary"
+        />
+      </label>
+      <span className={`shrink-0 text-mono text-[11px] ${ok ? "text-primary" : down ? "text-danger" : "text-muted-foreground"}`}>
+        {watching ? (status || "polling…") : "watch disabled"}
+      </span>
     </section>
   );
 }
