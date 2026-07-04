@@ -299,6 +299,8 @@ export function MaydayConsole() {
           realCallEnabled={realCallEnabled}
           setRealCallEnabled={setRealCallEnabled}
           callStatus={callStatus}
+          watchShop={watchShop}
+          setWatchShop={setWatchShop}
         />
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)_360px]">
           <ShopPanel metrics={metrics} phase={phase} />
