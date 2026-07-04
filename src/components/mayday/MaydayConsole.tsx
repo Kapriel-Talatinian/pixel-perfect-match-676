@@ -175,6 +175,9 @@ export function MaydayConsole() {
   // Synchronous re-entry lock: prevents a double Twilio call when the effect
   // re-runs before setTwilioId commits (StrictMode / rapid re-renders).
   const callPlacingRef = useRef(false);
+  // Which call's decision has already been applied — so a re-rendered poll
+  // interval can't process the same decision twice (double "WAIT" / "GO").
+  const decisionHandledForRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem("mayday.to", toNumber);
@@ -459,6 +462,7 @@ export function MaydayConsole() {
       setPhase("alert");
       setTwilioId(null);
       callPlacingRef.current = false;
+      decisionHandledForRef.current = null;
       setCallStatus(reason ?? "");
       setIncidentRef(makeIncidentId());
       if (source === "manual") breakShops();
@@ -572,6 +576,7 @@ export function MaydayConsole() {
     setPhase("idle");
     setTwilioId(null);
     callPlacingRef.current = false;
+    decisionHandledForRef.current = null;
     setCallStatus("");
     setIncidentRef("");
   }, [clearTimers, repairShops]);
@@ -630,7 +635,8 @@ export function MaydayConsole() {
           setBriefIndex(0);
           setCallStatus(`Answered · ${toNumber} picked up — MAYDAY speaking`);
         }
-        if (r.decision) {
+        if (r.decision && decisionHandledForRef.current !== twilioId) {
+          decisionHandledForRef.current = twilioId; // apply each call's reply once
           window.clearInterval(id);
           pollRef.current = null;
           setCallStatus(`Phone reply: ${r.decision.toUpperCase()}`);
