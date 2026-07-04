@@ -44,6 +44,7 @@ export const Route = createFileRoute("/api/public/mayday/voice-response")({
       POST: async ({ request }) => {
         const url = new URL(request.url);
         const id = url.searchParams.get("id") ?? "";
+        const state = url.searchParams.get("state") ?? "";
         const attempt = Number(url.searchParams.get("n") ?? "1");
         const form = await request.formData();
         const digits = String(form.get("Digits") ?? "");
@@ -51,33 +52,45 @@ export const Route = createFileRoute("/api/public/mayday/voice-response")({
 
         const { incidentStore } = await import("@/lib/mayday/store.server");
         const rec = incidentStore.get(id);
-        if (!rec) return say("Incident inconnu. Fin d'appel.");
+
+        const record = async (decision: "go" | "rollback" | "wait") => {
+          if (rec) { rec.decision = decision; rec.updatedAt = Date.now(); }
+          // Mirror into the VM's shared decision state (edge isolates don't share memory).
+          if (state && /^https?:\/\//.test(state)) {
+            try {
+              await fetch(`${new URL(state).origin}/mayday/decision`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ id, decision }),
+                signal: AbortSignal.timeout(3000),
+              });
+            } catch { /* best effort */ }
+          }
+        };
+
+        if (!rec && !state) return say("Incident inconnu. Fin d'appel.");
 
         const decision = normalize(digits, speech);
 
         if (decision === "go") {
-          rec.decision = "go";
-          rec.updatedAt = Date.now();
+          await record("go");
           return say("C'est parti. J'annule le commit fautif et je redéploie. Vérification dans quatre-vingt-dix secondes. Merci, vous pouvez raccrocher.");
         }
         if (decision === "rollback") {
-          rec.decision = "rollback";
-          rec.updatedAt = Date.now();
+          await record("rollback");
           return say("Compris, je n'y touche pas. J'escalade à l'équipe d'astreinte avec toutes les preuves. Fin d'appel.");
         }
         if (decision === "wait") {
-          rec.decision = "wait";
-          rec.updatedAt = Date.now();
+          await record("wait");
           return say("Très bien, j'attends. Je vous rappelle si la situation empire.");
         }
 
         // Unclear reply → re-ask once, then default to wait.
         if (attempt < 2) {
-          const cb = `${url.origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}&n=2`;
+          const cb = `${url.origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}${state ? `&state=${encodeURIComponent(state)}` : ""}&n=2`;
           return reAsk(cb);
         }
-        rec.decision = "wait";
-        rec.updatedAt = Date.now();
+        await record("wait");
         return say("Réponse non reconnue. J'attends par défaut et je préviens l'équipe. Au revoir.");
       },
     },

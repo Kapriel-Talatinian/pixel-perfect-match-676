@@ -76,8 +76,19 @@ async function placeCall(to: string, from: string, twiml: string): Promise<{ sid
   return payload;
 }
 
+function safeHttpUrl(u: string | undefined): string | null {
+  if (!u) return null;
+  try {
+    const parsed = new URL(u);
+    if (!/^https?:$/.test(parsed.protocol)) return null;
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
 export const startMaydayCall = createServerFn({ method: "POST" })
-  .inputValidator((input: { to: string; from: string; brief: string }) => {
+  .inputValidator((input: { to: string; from: string; brief: string; stateUrl?: string }) => {
     if (!/^\+\d{6,15}$/.test(input.to)) throw new Error("To must be E.164 (+33...)");
     if (!/^\+\d{6,15}$/.test(input.from)) throw new Error("From must be E.164 Twilio number");
     if (!input.brief || input.brief.length > 800) throw new Error("Brief 1..800 chars");
@@ -89,7 +100,10 @@ export const startMaydayCall = createServerFn({ method: "POST" })
     const id = `INC-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const req = getRequest();
     const origin = new URL(req.url).origin;
-    const callback = `${origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}`;
+    // The VM shop (single process) doubles as shared decision state so the
+    // phone webhook and the polling UI agree even across stateless edge isolates.
+    const state = safeHttpUrl(data.stateUrl);
+    const callback = `${origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}${state ? `&state=${encodeURIComponent(state)}` : ""}`;
     const twiml = buildTwiml(PHONE_BRIEF_FR, callback);
 
     incidentStore.set(id, {
@@ -115,10 +129,27 @@ export const startMaydayCall = createServerFn({ method: "POST" })
   });
 
 export const getIncidentDecision = createServerFn({ method: "GET" })
-  .inputValidator((input: { id: string }) => input)
+  .inputValidator((input: { id: string; stateUrl?: string }) => input)
   .handler(async ({ data }) => {
     const { incidentStore } = await import("./store.server");
     const rec = incidentStore.get(data.id);
-    if (!rec) return { decision: null as IncidentDecision, exists: false };
-    return { decision: rec.decision, exists: true };
+    if (rec?.decision) return { decision: rec.decision, exists: true };
+
+    // Fallback: read the shared decision state held by the VM shop.
+    const state = safeHttpUrl(data.stateUrl);
+    if (state) {
+      try {
+        const r = await fetch(`${state}/mayday/decision?id=${encodeURIComponent(data.id)}`, {
+          signal: AbortSignal.timeout(3000),
+        });
+        if (r.ok) {
+          const j = (await r.json()) as { decision?: string | null };
+          if (j.decision === "go" || j.decision === "rollback" || j.decision === "wait") {
+            if (rec) { rec.decision = j.decision; rec.updatedAt = Date.now(); }
+            return { decision: j.decision as IncidentDecision, exists: true };
+          }
+        }
+      } catch { /* VM unreachable — keep polling */ }
+    }
+    return { decision: null as IncidentDecision, exists: !!rec };
   });

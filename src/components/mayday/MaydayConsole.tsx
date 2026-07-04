@@ -360,7 +360,7 @@ export function MaydayConsole() {
       return;
     }
     setCallStatus("Placing Twilio call…");
-    startCall({ data: { to: toNumber, from: fromNumber, brief: PHONE_BRIEF } })
+    startCall({ data: { to: toNumber, from: fromNumber, brief: PHONE_BRIEF, stateUrl: remoteUrlRef.current.trim() || undefined } })
       .then((r) => {
         setTwilioId(r.id);
         setCallStatus(`Ringing ${toNumber} · SID …${(r.callSid ?? "").slice(-6) || "?"}`);
@@ -374,7 +374,7 @@ export function MaydayConsole() {
     if (phase === "resolved" || phase === "rejected" || phase === "idle") return;
     const id = window.setInterval(async () => {
       try {
-        const r = await pollDecision({ data: { id: twilioId } });
+        const r = await pollDecision({ data: { id: twilioId, stateUrl: remoteUrlRef.current.trim() || undefined } });
         if (r.decision) {
           window.clearInterval(id);
           pollRef.current = null;
