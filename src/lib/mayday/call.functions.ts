@@ -18,7 +18,13 @@ export const PHONE_BRIEF_FR =
   "Cause : le commit abc123 a pointé le service d'inventaire vers un port mort. " +
   "Impact : cent cinquante euros par minute. Je propose d'annuler ce commit, redéploiement en quatre-vingt-dix secondes.";
 
-// Fallback flow (no Gradium key): Polly TTS + Twilio ASR via <Gather>.
+// DTMF keypad prompt (reliable — no STT). Trial preamble consumes one keypress,
+// so the on-call presses a key first, then 1 / 2 / 3 here.
+const KEYPAD_PROMPT_FR =
+  "Tapez 1 pour lancer le correctif, 2 pour annuler et escalader, ou 3 pour attendre.";
+const NO_KEY_FR = "Aucune touche détectée. J'attends par défaut. Au revoir.";
+
+// Fallback flow (no Gradium key): Polly TTS + DTMF keypad via <Gather>.
 function buildPollyTwiml(brief: string, callbackUrl: string) {
   const safe = xmlEscape(brief);
   const cb = xmlEscape(callbackUrl);
@@ -26,30 +32,30 @@ function buildPollyTwiml(brief: string, callbackUrl: string) {
 <Response>
   <Pause length="1"/>
   <Say voice="Polly.Lea-Neural" language="fr-FR">${safe}</Say>
-  <Gather input="dtmf speech" language="fr-FR" numDigits="1" timeout="12" speechTimeout="auto" hints="go, rollback, wait, vas-y, attends, annule" action="${cb}" method="POST">
-    <Say voice="Polly.Lea-Neural" language="fr-FR">Dites GO pour lancer le correctif, ROLLBACK pour annuler et escalader, ou WAIT pour attendre. Vous pouvez aussi taper 1, 2 ou 3.</Say>
+  <Gather input="dtmf" numDigits="1" timeout="15" action="${cb}" method="POST">
+    <Say voice="Polly.Lea-Neural" language="fr-FR">${xmlEscape(KEYPAD_PROMPT_FR)}</Say>
   </Gather>
-  <Say voice="Polly.Lea-Neural" language="fr-FR">Aucune réponse détectée. J'attends. Au revoir.</Say>
+  <Say voice="Polly.Lea-Neural" language="fr-FR">${xmlEscape(NO_KEY_FR)}</Say>
 </Response>`;
 }
 
-// Real voice flow: Gradium TTS speaks the brief (<Play> of our signed TTS
-// route), <Record> captures the spoken reply, the recording webhook runs
-// Gradium STT. Digits 1/2/3 still work via finishOnKey. If the caller stays
-// fully silent, <Redirect> forces the n=2 path which defaults to "wait".
+// Gradium voice flow: Gradium TTS speaks the brief (<Play> of our signed TTS
+// route), then a DTMF <Gather> captures the decision on the keypad — reliable,
+// no STT. The natural Gradium voice is kept for the brief and the prompt.
 async function buildGradiumTwiml(origin: string, id: string, state: string | null) {
   const stateQ = state ? `&state=${encodeURIComponent(state)}` : "";
-  const cb = `${origin}/api/public/mayday/recording?id=${encodeURIComponent(id)}${stateQ}`;
-  const spoken =
-    `${PHONE_BRIEF_FR} Après le bip, dites GO pour lancer le correctif, ` +
-    `ROLLBACK pour annuler et escalader, ou WAIT pour attendre. Vous pouvez aussi taper 1, 2 ou 3.`;
-  const audio = xmlEscape(await ttsUrl(origin, spoken));
+  const cb = `${origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}${stateQ}`;
+  const briefAudio = xmlEscape(await ttsUrl(origin, `${PHONE_BRIEF_FR} ${KEYPAD_PROMPT_FR}`));
+  const promptAudio = xmlEscape(await ttsUrl(origin, KEYPAD_PROMPT_FR));
+  const noKeyAudio = xmlEscape(await ttsUrl(origin, NO_KEY_FR));
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="1"/>
-  <Play>${audio}</Play>
-  <Record action="${xmlEscape(cb)}" method="POST" maxLength="7" timeout="4" playBeep="true" trim="trim-silence" finishOnKey="123"/>
-  <Redirect method="POST">${xmlEscape(`${cb}&n=2`)}</Redirect>
+  <Play>${briefAudio}</Play>
+  <Gather input="dtmf" numDigits="1" timeout="15" action="${xmlEscape(cb)}" method="POST">
+    <Play>${promptAudio}</Play>
+  </Gather>
+  <Play>${noKeyAudio}</Play>
 </Response>`;
 }
 

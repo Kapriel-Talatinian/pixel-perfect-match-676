@@ -25,7 +25,8 @@ export const CONFIRM_FR: Record<Decision, string> = {
   wait: "Très bien, j'attends. Je vous rappelle si la situation empire.",
 };
 
-export const REASK_FR = "Je n'ai pas compris. Dites GO, ROLLBACK, ou WAIT. Ou tapez 1, 2 ou 3.";
+export const REASK_FR =
+  "Je n'ai pas compris. Tapez 1 pour lancer, 2 pour annuler, ou 3 pour attendre.";
 export const DEFAULT_WAIT_FR =
   "Réponse non reconnue. J'attends par défaut et je préviens l'équipe. Au revoir.";
 

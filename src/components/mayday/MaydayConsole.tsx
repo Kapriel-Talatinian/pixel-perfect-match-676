@@ -1639,30 +1639,41 @@ function PhonePanel({
       {canDecide && (
         <div className="space-y-2.5 px-5 py-4">
           <div className="text-center text-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-            your reply · STT
+            {realCallEnabled ? "press on the phone keypad" : "your reply"}
           </div>
           <button
             onClick={() => onDecide("go")}
             className="flex w-full items-center justify-center gap-2 bg-primary px-4 py-3.5 text-base font-bold text-primary-foreground glow-green hover:brightness-110 active:scale-95"
           >
-            <Mic className="h-4 w-4" /> Say "GO"
+            <span className="grid h-6 w-6 place-items-center border border-primary-foreground text-sm">
+              1
+            </span>{" "}
+            GO — proceed
           </button>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => onDecide("rollback")}
               className="flex items-center justify-center gap-2 border border-danger px-3 py-2.5 text-sm font-semibold text-danger hover:bg-danger hover:text-white"
             >
-              <AlertTriangle className="h-3.5 w-3.5" /> ROLLBACK
+              <span className="grid h-5 w-5 place-items-center border border-danger text-xs">
+                2
+              </span>{" "}
+              ROLLBACK
             </button>
             <button
               onClick={() => onDecide("wait")}
-              className="border border-border px-3 py-2.5 text-sm font-semibold hover:bg-foreground hover:text-background"
+              className="flex items-center justify-center gap-2 border border-border px-3 py-2.5 text-sm font-semibold hover:bg-foreground hover:text-background"
             >
+              <span className="grid h-5 w-5 place-items-center border border-border text-xs">
+                3
+              </span>{" "}
               WAIT
             </button>
           </div>
           <p className="text-center text-[10px] text-muted-foreground">
-            Unclear reply → voice re-asks once → else "wait"
+            {realCallEnabled
+              ? "Trial account: press any key first for the preamble, then 1 / 2 / 3"
+              : "click a choice, or use the phone keypad on a real call"}
           </p>
         </div>
       )}

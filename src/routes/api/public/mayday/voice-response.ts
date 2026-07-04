@@ -27,7 +27,7 @@ function reAsk(callbackUrl: string) {
   return new Response(
     `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather input="dtmf speech" language="fr-FR" numDigits="1" timeout="10" speechTimeout="auto" hints="go, rollback, wait, vas-y, attends, annule" action="${cb}" method="POST">
+  <Gather input="dtmf" numDigits="1" timeout="12" action="${cb}" method="POST">
     <Say voice="Polly.Lea-Neural" language="fr-FR">${xmlEscape(REASK_FR)}</Say>
   </Gather>
   <Say voice="Polly.Lea-Neural" language="fr-FR">Toujours rien. J'attends par défaut. Au revoir.</Say>
