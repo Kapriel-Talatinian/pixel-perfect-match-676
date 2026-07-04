@@ -643,8 +643,15 @@ function PhonePanel({
           <span className="text-mono text-xs uppercase tracking-widest text-muted-foreground">voice</span>
           <span className="text-mono text-xs">:8300</span>
         </div>
-        <span className="text-mono text-[10px] uppercase tracking-widest text-muted-foreground">Gradium · Twilio</span>
+        <span className={`text-mono text-[10px] uppercase tracking-widest ${realCallEnabled ? "text-primary" : "text-muted-foreground"}`}>
+          {realCallEnabled ? "● LIVE Twilio" : "SIMULATION"}
+        </span>
       </div>
+      {callStatus && (
+        <div className="border-b border-border/60 bg-background/40 px-4 py-2 text-mono text-[11px] text-foreground">
+          {callStatus}
+        </div>
+      )}
 
       <div className="flex flex-col items-center gap-4 p-6">
         <div className={`relative grid h-32 w-32 place-items-center rounded-full border-2 ${ringing ? "border-warning glow-red" : callAnswered ? "border-success glow-green" : "border-border"}`}>
