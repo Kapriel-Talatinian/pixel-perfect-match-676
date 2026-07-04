@@ -64,6 +64,8 @@ export function MaydayConsole() {
   const [callStatus, setCallStatus] = useState<string>("");
   const [incidentId, setIncidentId] = useState<string | null>(null);
   const [watchShop, setWatchShop] = useState<boolean>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.watch") === "1") || false);
+  const [remoteShopUrl, setRemoteShopUrl] = useState<string>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.remote")) || "http://192.248.185.175");
+  const [remoteStatus, setRemoteStatus] = useState<string>("");
 
   const timeoutsRef = useRef<number[]>([]);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -73,6 +75,7 @@ export function MaydayConsole() {
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.from", fromNumber); }, [fromNumber]);
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.real", realCallEnabled ? "1" : "0"); }, [realCallEnabled]);
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.watch", watchShop ? "1" : "0"); }, [watchShop]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.remote", remoteShopUrl); }, [remoteShopUrl]);
 
   const startCall = useServerFn(startMaydayCall);
   const pollDecision = useServerFn(getIncidentDecision);
