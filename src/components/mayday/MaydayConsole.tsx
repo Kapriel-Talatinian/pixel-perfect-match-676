@@ -63,6 +63,7 @@ export function MaydayConsole() {
   const [realCallEnabled, setRealCallEnabled] = useState<boolean>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.real") === "1") || false);
   const [callStatus, setCallStatus] = useState<string>("");
   const [incidentId, setIncidentId] = useState<string | null>(null);
+  const [watchShop, setWatchShop] = useState<boolean>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.watch") === "1") || false);
 
   const timeoutsRef = useRef<number[]>([]);
   const timelineRef = useRef<HTMLDivElement>(null);
