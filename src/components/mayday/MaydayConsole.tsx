@@ -63,6 +63,7 @@ export function MaydayConsole() {
   const [realCallEnabled, setRealCallEnabled] = useState<boolean>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.real") === "1") || false);
   const [callStatus, setCallStatus] = useState<string>("");
   const [incidentId, setIncidentId] = useState<string | null>(null);
+  const [watchShop, setWatchShop] = useState<boolean>(() => (typeof window !== "undefined" && localStorage.getItem("mayday.watch") === "1") || false);
 
   const timeoutsRef = useRef<number[]>([]);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -71,6 +72,7 @@ export function MaydayConsole() {
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.to", toNumber); }, [toNumber]);
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.from", fromNumber); }, [fromNumber]);
   useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.real", realCallEnabled ? "1" : "0"); }, [realCallEnabled]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mayday.watch", watchShop ? "1" : "0"); }, [watchShop]);
 
   const startCall = useServerFn(startMaydayCall);
   const pollDecision = useServerFn(getIncidentDecision);
@@ -249,6 +251,25 @@ export function MaydayConsole() {
     return () => { window.clearInterval(id); pollRef.current = null; };
   }, [incidentId, phase, pollDecision, decide, callAnswered]);
 
+  // Watchdog: poll the real /shop /api/shop/health and auto-trigger the flow when broken
+  useEffect(() => {
+    if (!watchShop) return;
+    const canTrigger = () => phase === "idle" || phase === "resolved" || phase === "rejected";
+    const tick = async () => {
+      try {
+        const r = await fetch("/api/shop/health", { cache: "no-store" });
+        const h = await r.json();
+        if (h.broken && canTrigger()) breakProduction();
+      } catch { /* ignore */ }
+    };
+    tick();
+    const id = window.setInterval(tick, 2500);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchShop, phase]);
+
+
+
   const canBreak = phase === "idle" || phase === "resolved" || phase === "rejected";
   const isBroken = !metrics.green;
   const durationSecs = useMemo(() => {
@@ -278,6 +299,8 @@ export function MaydayConsole() {
           realCallEnabled={realCallEnabled}
           setRealCallEnabled={setRealCallEnabled}
           callStatus={callStatus}
+          watchShop={watchShop}
+          setWatchShop={setWatchShop}
         />
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)_360px]">
           <ShopPanel metrics={metrics} phase={phase} />
@@ -896,6 +919,8 @@ function TwilioSettings({
   realCallEnabled,
   setRealCallEnabled,
   callStatus,
+  watchShop,
+  setWatchShop,
 }: {
   toNumber: string;
   setToNumber: (v: string) => void;
@@ -904,6 +929,8 @@ function TwilioSettings({
   realCallEnabled: boolean;
   setRealCallEnabled: (v: boolean) => void;
   callStatus: string;
+  watchShop: boolean;
+  setWatchShop: (v: boolean) => void;
 }) {
   const ready = /^\+\d{6,15}$/.test(toNumber) && /^\+\d{6,15}$/.test(fromNumber);
   return (
@@ -941,6 +968,17 @@ function TwilioSettings({
         />
         <span className={realCallEnabled ? "text-primary" : "text-muted-foreground"}>
           {realCallEnabled ? "LIVE" : "sim"}
+        </span>
+      </label>
+      <label className="flex shrink-0 items-center gap-2 border-l border-border/60 pl-3 text-mono text-xs">
+        <input
+          type="checkbox"
+          checked={watchShop}
+          onChange={(e) => setWatchShop(e.target.checked)}
+          className="h-4 w-4 accent-primary"
+        />
+        <span className={watchShop ? "text-primary" : "text-muted-foreground"}>
+          Watch shop
         </span>
       </label>
       {callStatus && (
