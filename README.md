@@ -3,25 +3,42 @@
 > **"Your infrastructure just called. It fixed itself."**
 
 Un service e-commerce live casse. MAYDAY le détecte, enquête comme un ingénieur senior
-(métriques, logs, commits, runbooks cités), décide d'un correctif, **appelle l'astreinte
-sur un vrai téléphone** pour approbation vocale (« GO »), applique le fix, vérifie le
-retour au vert sur la vraie santé du service, et publie un post-mortem cité et daté.
+(métriques, logs, commits, **runbooks/incidents/SLA cités**), décide d'un correctif via
+un **vrai agent LLM sur Vultr Serverless Inference**, **appelle l'astreinte sur un vrai
+téléphone** pour approbation vocale (« GO »), applique le fix, vérifie le retour au vert
+sur la vraie santé du service, et publie un post-mortem cité et daté.
 
 RAISE Summit Hackathon · Paris · Juillet 2026 · Track **Vultr**.
 
-## La boucle (démo semi-réelle, end-to-end)
+## La boucle (end-to-end, infra réelle)
 
 ```
-BREAK (réel) ──► watchdog détecte (health poll 3s) ──► timeline agent : plan,
-7 outils, 3 retrievals cités ──► décision revert (0.92) ──► ☎ appel Twilio réel
-──► « GO » (voix fr ou touche 1) ──► réparation RÉELLE (shop interne + VM Vultr)
-──► vérification sur la vraie santé ──► post-mortem (durée & € réels)
+BREAK (réel VM) ──► watchdog détecte (health poll 3s) ──► AGENT RÉEL :
+plan → 7 outils → retrieval BM25 sur docs-corpus → décision LLM (Vultr Inference)
+──► ☎ appel Twilio réel ──► « GO » (voix fr ou touche 1)
+──► réparation RÉELLE (VM Vultr) ──► vérif santé live ──► post-mortem cité
 ```
 
 - **`/`** — la console MAYDAY : timeline de l'agent, compteur € perdu (150 €/min SLA),
   panneau service, téléphone, post-mortem. Blanc, encre, radius 0.
-- **`/shop`** — la boutique interne (vraie API : products/checkout/health, casse pour de vrai).
-- **`vm-shop/`** — la boutique FastAPI à déployer sur la VM Vultr (voir `vm-shop/README.md`).
+- **`docs-corpus/`** — les documents que l'agent cite réellement (5 runbooks, 5 incidents
+  dont 2 miroir des pannes, `sla.md`). Retrieval BM25 réel, sans dépendance, bundlé pour l'edge.
+- **`src/lib/mayday/brain.server.ts`** — l'agent : evidence → retrieval → **Vultr
+  Serverless Inference** (OpenAI-compat, JSON mode, temp 0.1) → décision validée.
+- **`vm-shop/`** — la boutique FastAPI sur la VM Vultr (`http://192.248.185.175`).
+
+## Adéquation track Vultr (Statement Two)
+
+| Exigence | MAYDAY |
+|---|---|
+| Web-based enterprise agent | La console (raisonnement live, timeline, approbation) |
+| Grounded in documents | `docs-corpus/` — chaque décision cite runbook + incident + SLA (retrieval BM25 réel) |
+| Plans | L'agent émet un plan explicite, streamé dans la timeline |
+| Retrieve > 1× | #1 incident similaire · #2 runbook · #3 SLA (€/min) |
+| Calls tools | get_metrics · get_logs · get_git_history · retrieve_docs · request_approval · apply_fix · verify_recovery |
+| Makes decisions | revert / patch / escalate + confiance ; < 0.8 ⇒ escalate |
+| LLM sur Vultr | `VULTR_INFERENCE_*` (LiteLLM/OpenAI-compat) ; fallback local déterministe si absent |
+| Usable outcome | Incident résolu + post-mortem cité + € réel économisé |
 
 ## Démarrer
 
