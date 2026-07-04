@@ -10,11 +10,35 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiShopProductsRouteImport } from './routes/api/shop/products'
+import { Route as ApiShopHealthRouteImport } from './routes/api/shop/health'
+import { Route as ApiShopCheckoutRouteImport } from './routes/api/shop/checkout'
+import { Route as ApiShopAdminBreakRouteImport } from './routes/api/shop/admin.break'
 import { Route as ApiPublicMaydayVoiceResponseRouteImport } from './routes/api/public/mayday/voice-response'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiShopProductsRoute = ApiShopProductsRouteImport.update({
+  id: '/api/shop/products',
+  path: '/api/shop/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiShopHealthRoute = ApiShopHealthRouteImport.update({
+  id: '/api/shop/health',
+  path: '/api/shop/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiShopCheckoutRoute = ApiShopCheckoutRouteImport.update({
+  id: '/api/shop/checkout',
+  path: '/api/shop/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiShopAdminBreakRoute = ApiShopAdminBreakRouteImport.update({
+  id: '/api/shop/admin/break',
+  path: '/api/shop/admin/break',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicMaydayVoiceResponseRoute =
@@ -26,28 +50,63 @@ const ApiPublicMaydayVoiceResponseRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/shop/checkout': typeof ApiShopCheckoutRoute
+  '/api/shop/health': typeof ApiShopHealthRoute
+  '/api/shop/products': typeof ApiShopProductsRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
+  '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/shop/checkout': typeof ApiShopCheckoutRoute
+  '/api/shop/health': typeof ApiShopHealthRoute
+  '/api/shop/products': typeof ApiShopProductsRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
+  '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/shop/checkout': typeof ApiShopCheckoutRoute
+  '/api/shop/health': typeof ApiShopHealthRoute
+  '/api/shop/products': typeof ApiShopProductsRoute
   '/api/public/mayday/voice-response': typeof ApiPublicMaydayVoiceResponseRoute
+  '/api/shop/admin/break': typeof ApiShopAdminBreakRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/mayday/voice-response'
+  fullPaths:
+    | '/'
+    | '/api/shop/checkout'
+    | '/api/shop/health'
+    | '/api/shop/products'
+    | '/api/public/mayday/voice-response'
+    | '/api/shop/admin/break'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/mayday/voice-response'
-  id: '__root__' | '/' | '/api/public/mayday/voice-response'
+  to:
+    | '/'
+    | '/api/shop/checkout'
+    | '/api/shop/health'
+    | '/api/shop/products'
+    | '/api/public/mayday/voice-response'
+    | '/api/shop/admin/break'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/shop/checkout'
+    | '/api/shop/health'
+    | '/api/shop/products'
+    | '/api/public/mayday/voice-response'
+    | '/api/shop/admin/break'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiShopCheckoutRoute: typeof ApiShopCheckoutRoute
+  ApiShopHealthRoute: typeof ApiShopHealthRoute
+  ApiShopProductsRoute: typeof ApiShopProductsRoute
   ApiPublicMaydayVoiceResponseRoute: typeof ApiPublicMaydayVoiceResponseRoute
+  ApiShopAdminBreakRoute: typeof ApiShopAdminBreakRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -57,6 +116,34 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/shop/products': {
+      id: '/api/shop/products'
+      path: '/api/shop/products'
+      fullPath: '/api/shop/products'
+      preLoaderRoute: typeof ApiShopProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/shop/health': {
+      id: '/api/shop/health'
+      path: '/api/shop/health'
+      fullPath: '/api/shop/health'
+      preLoaderRoute: typeof ApiShopHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/shop/checkout': {
+      id: '/api/shop/checkout'
+      path: '/api/shop/checkout'
+      fullPath: '/api/shop/checkout'
+      preLoaderRoute: typeof ApiShopCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/shop/admin/break': {
+      id: '/api/shop/admin/break'
+      path: '/api/shop/admin/break'
+      fullPath: '/api/shop/admin/break'
+      preLoaderRoute: typeof ApiShopAdminBreakRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/mayday/voice-response': {
@@ -71,7 +158,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiShopCheckoutRoute: ApiShopCheckoutRoute,
+  ApiShopHealthRoute: ApiShopHealthRoute,
+  ApiShopProductsRoute: ApiShopProductsRoute,
   ApiPublicMaydayVoiceResponseRoute: ApiPublicMaydayVoiceResponseRoute,
+  ApiShopAdminBreakRoute: ApiShopAdminBreakRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
