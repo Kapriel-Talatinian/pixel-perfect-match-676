@@ -620,6 +620,8 @@ function PhonePanel({
   briefDone,
   onAnswer,
   onDecide,
+  realCallEnabled,
+  callStatus,
 }: {
   ringing: boolean;
   phase: Phase;
@@ -628,6 +630,8 @@ function PhonePanel({
   briefDone: boolean;
   onAnswer: () => void;
   onDecide: (choice: "go" | "rollback" | "wait") => void;
+  realCallEnabled: boolean;
+  callStatus: string;
 }) {
   const canDecide = callAnswered && briefDone;
 
