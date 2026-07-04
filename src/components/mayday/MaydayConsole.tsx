@@ -138,6 +138,8 @@ export function MaydayConsole() {
     setEuroLost(0);
     setRunStartedAt(Date.now());
     setPhase("alert");
+    setIncidentId(null);
+    setCallStatus("");
     runScript(SCRIPT, () => setPhase("awaiting_approval"));
   }, [clearTimers, runScript]);
 
