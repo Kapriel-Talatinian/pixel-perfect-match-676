@@ -329,17 +329,17 @@ function TopBar({
 }) {
   const statusText: Record<Phase, string> = {
     idle: "All systems green",
-    alert: "🔴 Alert received",
-    investigating: "🧠 Investigating",
-    deciding: "🧠 Deciding",
-    calling: "☎ Placing call",
-    ringing: "☎ Ringing on-call",
-    awaiting_approval: "⏳ Awaiting approval",
-    approved: "✅ Approved",
-    rejected: "🛑 Human took over",
-    fixing: "🛠 Applying fix",
-    verifying: "🔍 Verifying recovery",
-    resolved: "✅ Resolved",
+    alert: "Alert received",
+    investigating: "Investigating",
+    deciding: "Deciding",
+    calling: "Placing call",
+    ringing: "Ringing on-call",
+    awaiting_approval: "Awaiting approval",
+    approved: "Approved",
+    rejected: "Human took over",
+    fixing: "Applying fix",
+    verifying: "Verifying recovery",
+    resolved: "Resolved",
   };
 
   return (
