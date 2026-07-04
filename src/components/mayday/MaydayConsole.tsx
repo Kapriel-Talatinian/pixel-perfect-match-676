@@ -265,7 +265,16 @@ export function MaydayConsole() {
       />
 
       <main className="mx-auto max-w-[1600px] px-4 pb-16 pt-6">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)_360px]">
+        <TwilioSettings
+          toNumber={toNumber}
+          setToNumber={setToNumber}
+          fromNumber={fromNumber}
+          setFromNumber={setFromNumber}
+          realCallEnabled={realCallEnabled}
+          setRealCallEnabled={setRealCallEnabled}
+          callStatus={callStatus}
+        />
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)_360px]">
           <ShopPanel metrics={metrics} phase={phase} />
           <AgentTimeline events={events} phase={phase} ref={timelineRef} />
           <PhonePanel
@@ -276,6 +285,8 @@ export function MaydayConsole() {
             briefDone={callAnswered && briefIndex >= PHONE_BRIEF.length}
             onAnswer={answerCall}
             onDecide={decide}
+            realCallEnabled={realCallEnabled}
+            callStatus={callStatus}
           />
         </div>
 
