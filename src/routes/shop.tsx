@@ -78,7 +78,7 @@ function ShopPage() {
   return (
     <div className="min-h-screen">
       {/* Top nav */}
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-border bg-background">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
           <Link to="/shop" className="flex items-center gap-3">
             <div className="grid h-8 w-8 place-items-center bg-primary text-primary-foreground text-mono text-sm font-bold">S</div>
@@ -97,14 +97,14 @@ function ShopPage() {
           </nav>
         </div>
         {/* Health strip */}
-        <div className={`border-t px-6 py-1.5 text-mono text-[11px] ${broken ? "border-danger/50 bg-danger/10 text-danger" : "border-primary/40 bg-primary/[0.06] text-primary"}`}>
+        <div className={`border-t border-border px-6 py-1.5 text-mono text-[11px] ${broken ? "bg-danger text-white" : "bg-background text-foreground"}`}>
           <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               {broken ? <ServerCrash className="h-3.5 w-3.5" /> : <Activity className="h-3.5 w-3.5" />}
               <span className="uppercase tracking-widest">{broken ? "service degraded" : "all systems nominal"}</span>
-              {broken && health?.reason && <span className="hidden truncate text-muted-foreground md:inline">— {health.reason}</span>}
+              {broken && health?.reason && <span className="hidden truncate text-white/80 md:inline">— {health.reason}</span>}
             </div>
-            <div className="flex items-center gap-4 text-[10px] uppercase tracking-widest text-muted-foreground">
+            <div className={`flex items-center gap-4 text-[10px] uppercase tracking-widest ${broken ? "text-white/80" : "text-muted-foreground"}`}>
               <span>err {(((health?.error_rate ?? 0) * 100)).toFixed(1)}%</span>
               <span>p95 {health?.p95_ms ?? 0}ms</span>
               <span>orders {health?.orders ?? 0}</span>
@@ -125,7 +125,7 @@ function ShopPage() {
           </div>
 
           {loadError && (
-            <div className="mb-4 border border-danger/50 bg-danger/10 px-4 py-3 text-mono text-xs text-danger">
+            <div className="mb-4 border border-danger px-4 py-3 text-mono text-xs text-danger">
               <div className="flex items-center gap-2"><ServerCrash className="h-4 w-4" /> Failed to load catalogue</div>
               <div className="mt-1 text-muted-foreground">{loadError}</div>
             </div>
@@ -134,7 +134,7 @@ function ShopPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {products.map((p) => (
               <article key={p.id} className="panel flex flex-col overflow-hidden">
-                <div className="grid aspect-[4/3] place-items-center border-b border-border/60 bg-gradient-to-br from-muted/60 to-background/60">
+                <div className="grid aspect-[4/3] place-items-center border-b border-border bg-muted">
                   <div className="text-mono text-4xl font-bold uppercase tracking-tight text-muted-foreground/40">
                     {p.name.split(" ")[0].slice(0, 2)}
                   </div>
@@ -155,7 +155,7 @@ function ShopPage() {
                       className="grid h-9 w-9 place-items-center border border-border bg-background/60 text-muted-foreground hover:bg-muted disabled:opacity-40"
                       aria-label={`Remove one ${p.name}`}
                     ><Minus className="h-4 w-4" /></button>
-                    <div className="grid h-9 flex-1 place-items-center border border-border bg-background/40 text-mono text-sm">
+                    <div className="grid h-9 flex-1 place-items-center border border-border bg-background text-mono text-sm">
                       {cart[p.id] ?? 0}
                     </div>
                     <button
@@ -176,7 +176,7 @@ function ShopPage() {
         {/* Cart */}
         <aside className="lg:sticky lg:top-[104px] lg:h-fit">
           <div className="panel">
-            <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="h-4 w-4 text-primary" />
                 <span className="text-mono text-xs uppercase tracking-widest text-muted-foreground">Cart</span>
@@ -188,7 +188,7 @@ function ShopPage() {
               {itemCount === 0 ? (
                 <div className="px-4 py-8 text-center text-mono text-xs text-muted-foreground">Empty. Add something.</div>
               ) : (
-                <ul className="divide-y divide-border/60">
+                <ul className="divide-y divide-border">
                   {Object.entries(cart).map(([id, qty]) => {
                     const p = products.find((x) => x.id === id); if (!p) return null;
                     return (
@@ -209,7 +209,7 @@ function ShopPage() {
               )}
             </div>
 
-            <div className="border-t border-border/60 px-4 py-3">
+            <div className="border-t border-border px-4 py-3">
               <div className="flex items-center justify-between">
                 <span className="text-mono text-[11px] uppercase tracking-widest text-muted-foreground">Total</span>
                 <span className="text-mono text-xl font-bold tabular-nums">{eur(total)}</span>
@@ -222,7 +222,7 @@ function ShopPage() {
                 {busy ? "Processing…" : <>Checkout <ArrowRight className="h-4 w-4" /></>}
               </button>
               {checkoutMsg && (
-                <div className={`mt-3 flex items-start gap-2 border px-3 py-2 text-mono text-[11px] ${checkoutMsg.startsWith("Order") ? "border-primary/40 bg-primary/[0.08] text-primary" : "border-danger/50 bg-danger/10 text-danger"}`}>
+                <div className={`mt-3 flex items-start gap-2 border px-3 py-2 text-mono text-[11px] ${checkoutMsg.startsWith("Order") ? "border-border text-foreground" : "border-danger text-danger"}`}>
                   {checkoutMsg.startsWith("Order") ? <PackageCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <ServerCrash className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
                   <span>{checkoutMsg}</span>
                 </div>
@@ -261,7 +261,7 @@ function AdminBreakStrip({ broken, onChanged }: { broken: boolean; onChanged: ()
       <div className="flex gap-2">
         <button
           onClick={() => toggle(true)} disabled={busy || broken}
-          className="flex items-center gap-2 border border-danger/60 bg-danger/10 px-4 py-2 text-sm font-bold text-danger hover:bg-danger/20 disabled:opacity-40"
+          className="flex items-center gap-2 border border-danger px-4 py-2 text-sm font-bold text-danger hover:bg-danger hover:text-white disabled:opacity-40"
         ><ServerCrash className="h-4 w-4" /> Break production</button>
         <button
           onClick={() => toggle(false)} disabled={busy || !broken}
