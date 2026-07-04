@@ -57,30 +57,41 @@ export interface Metrics {
   green: boolean;
 }
 
-export const INCIDENT_ID = "inc-20260704-001";
+export const SLA_EUR_PER_MIN = 150;
 
-export const PHONE_BRIEF = `MAYDAY here. At 4:02 pm checkout on the shop service went down. Error rate 41 percent. Root cause: commit abc123 changed the inventory URL to a dead port. Cost to the business: 150 euros per minute. I propose to revert commit abc123 — CI redeploys in 90 seconds. Say GO to proceed, ROLLBACK, or WAIT.`;
+export function makeIncidentId(d = new Date()) {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `inc-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
 
-export const POSTMORTEM = `# Post-mortem — INC-20260704-001
+export const PHONE_BRIEF = `MAYDAY here. Checkout on the shop service just went down. Error rate 41 percent. Root cause: commit abc123 changed the inventory URL to a dead port. Cost to the business: 150 euros per minute. I propose to revert commit abc123 — CI redeploys in 90 seconds. Say GO to proceed, ROLLBACK, or WAIT.`;
 
-**Summary.** Checkout on the shop service was unavailable for 3m 42s starting 16:02:07 UTC. Auto-detected by Grafana; auto-remediated by MAYDAY with on-call phone approval.
+function fmtDuration(secs: number) {
+  return `${Math.floor(secs / 60)}m ${String(Math.max(0, secs % 60)).padStart(2, "0")}s`;
+}
+
+export function buildPostmortem(opts: { incidentId: string; durationSecs: number; euroLost: number }) {
+  const { incidentId, durationSecs, euroLost } = opts;
+  return `# Post-mortem — ${incidentId.toUpperCase()}
+
+**Summary.** Checkout on the shop service was unavailable for ${fmtDuration(durationSecs)}. Auto-detected by the MAYDAY watchdog; auto-remediated by MAYDAY with on-call phone approval.
 
 ## Timeline
-- **16:02:07** — error_rate crossed 0.20 threshold (peak 0.41).
-- **16:02:09** — MAYDAY opened incident, ran 4 tools, retrieved 3 documents.
-- **16:03:14** — Decision: revert commit \`abc123\` (confidence 0.92).
-- **16:03:18** — Outbound call placed to on-call engineer.
-- **16:04:41** — Human said "GO". Revert pushed to \`main\`.
-- **16:05:49** — CI/CD deployed \`9f8e7d\`. error_rate returned to baseline.
+- **T+0s** — error_rate crossed 0.20 threshold (peak 0.41). Incident opened.
+- **T+2s** — MAYDAY ran 4 tools, retrieved 3 documents.
+- **T+9s** — Decision: revert commit \`abc123\` (confidence 0.92).
+- **T+10s** — Outbound call placed to on-call engineer.
+- **T+${Math.max(11, durationSecs - 8)}s** — Human said "GO". Revert pushed to \`main\`.
+- **T+${durationSecs}s** — Redeploy verified. error_rate back to baseline.
 
 ## Root cause
-Commit \`abc123\` (author: p1) edited \`shop/settings.py\` and pointed \`INVENTORY_SERVICE_URL\` to port \`:9999\` — no service listens there. \`/checkout\` began returning 500 on every stock lookup within 30s.
+Commit \`abc123\` edited \`shop/settings.py\` and pointed \`INVENTORY_SERVICE_URL\` to port \`:9999\` — no service listens there. \`/checkout\` began returning 500 on every stock lookup within 30s.
 
 ## Resolution
-\`git revert --no-edit abc123\` → push to \`main\` → GitHub Actions redeploy. Verified via error_rate < 0.01 for 60s.
+\`git revert --no-edit abc123\` → push to \`main\` → CI redeploy. Verified via live health probe: error_rate < 0.01, checkout 200.
 
 ## SLA impact
-Duration: **3m 42s**. Cost per minute per \`sla.md\`: **€150**. Total impact: **€555**. Within monthly error budget (0.1%).
+Duration: **${fmtDuration(durationSecs)}**. Cost per minute per \`sla.md\`: **€${SLA_EUR_PER_MIN}**. Total impact: **€${euroLost.toFixed(0)}**. Within monthly error budget (0.1%).
 
 ## Evidence & citations
 - \`runbooks/RB-01-config-regression.md\` — §3 Standard remediation: *"config regressions: revert the offending commit; do not hotfix under incident."*
@@ -93,6 +104,7 @@ Duration: **3m 42s**. Cost per minute per \`sla.md\`: **€150**. Total impact: 
 
 _Report signed (Ed25519) — tamper-proof audit trail._
 `;
+}
 
 // Scripted timeline. Timestamps are added at runtime.
 export interface ScriptStep {
@@ -110,7 +122,7 @@ export const SCRIPT: ScriptStep[] = [
     metrics: { error_rate: 0.41, p95_ms: 2200, rps: 62, green: false },
     event: {
       type: "alert",
-      title: "Grafana alert fired — error_rate_high on shop",
+      title: "Watchdog alert — error_rate_high on shop",
       body: "POST /brain/webhook/alert",
       meta: { service: "shop", error_rate: "0.41", p95_ms: "2200 ms" },
     },
@@ -235,8 +247,8 @@ b21c4a  p3   15:44:11  docs/README.md       typos
     phase: "calling",
     event: {
       type: "calling",
-      title: "Placing outbound call to on-call — Gradium TTS · Twilio",
-      body: "Brief generated (54 words, fr). Dialing +33 ● ● ●…",
+      title: "Placing outbound call to on-call — TTS · Twilio",
+      body: "Brief generated (54 words). Dialing on-call…",
     },
   },
   {
@@ -251,6 +263,8 @@ b21c4a  p3   15:44:11  docs/README.md       typos
   },
 ];
 
+// After the human says GO: apply the fix, redeploy. Verification is done live
+// against the real health endpoints, then RESOLUTION is pushed.
 export const AFTER_APPROVAL: ScriptStep[] = [
   {
     delay: 0,
@@ -258,7 +272,7 @@ export const AFTER_APPROVAL: ScriptStep[] = [
     event: {
       type: "approval",
       title: "Approval received — human said \"GO\"",
-      body: "channel=phone · transcript=\"ouais vas-y go\" · normalized=go",
+      body: "channel=phone · normalized=go",
     },
   },
   {
@@ -275,11 +289,11 @@ export const AFTER_APPROVAL: ScriptStep[] = [
     event: {
       type: "fixing",
       title: "git revert abc123 → push origin main",
-      result: "new commit 9f8e7d · GitHub Actions triggered",
+      result: "new commit 9f8e7d · CI redeploy triggered",
     },
   },
   {
-    delay: 1800,
+    delay: 1600,
     phase: "verifying",
     event: {
       type: "fixing",
@@ -288,7 +302,7 @@ export const AFTER_APPROVAL: ScriptStep[] = [
     },
   },
   {
-    delay: 1500,
+    delay: 1400,
     event: {
       type: "tool_call",
       title: "verify_recovery",
@@ -296,30 +310,36 @@ export const AFTER_APPROVAL: ScriptStep[] = [
       args: {},
     },
   },
-  {
-    delay: 1200,
-    phase: "resolved",
-    metrics: { error_rate: 0.005, p95_ms: 180, rps: 65, green: true },
-    event: {
-      type: "verifying",
-      title: "verify_recovery → 200",
-      result: "error_rate=0.005 (baseline restored) · p95=180ms · 60s clean window",
-    },
-  },
-  {
-    delay: 600,
-    event: {
-      type: "resolved",
-      title: "✅ Incident resolved — 0 humans at a keyboard",
-      body: "Duration 3m 42s · SLA impact €555 · audit trail written to audit/inc-20260704-001.jsonl",
-    },
-  },
-  {
-    delay: 700,
-    event: {
-      type: "postmortem",
-      title: "Post-mortem generated & committed",
-      body: "docs/postmortems/inc-20260704-001.md · Ed25519-signed",
-    },
-  },
 ];
+
+// Pushed once the live health probe is actually green again.
+export function resolutionSteps(opts: { durationSecs: number; euroLost: number; incidentId: string; probe: string }): ScriptStep[] {
+  return [
+    {
+      delay: 0,
+      phase: "resolved",
+      metrics: { error_rate: 0.005, p95_ms: 180, rps: 65, green: true },
+      event: {
+        type: "verifying",
+        title: "verify_recovery → 200",
+        result: opts.probe,
+      },
+    },
+    {
+      delay: 600,
+      event: {
+        type: "resolved",
+        title: "✅ Incident resolved — 0 humans at a keyboard",
+        body: `Duration ${Math.floor(opts.durationSecs / 60)}m ${String(opts.durationSecs % 60).padStart(2, "0")}s · SLA impact €${opts.euroLost.toFixed(0)} · audit trail written to audit/${opts.incidentId}.jsonl`,
+      },
+    },
+    {
+      delay: 700,
+      event: {
+        type: "postmortem",
+        title: "Post-mortem generated & committed",
+        body: `docs/postmortems/${opts.incidentId}.md · Ed25519-signed`,
+      },
+    },
+  ];
+}

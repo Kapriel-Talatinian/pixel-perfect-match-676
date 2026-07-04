@@ -2,22 +2,78 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import type { IncidentDecision } from "./store.server";
 
-function buildTwiml(brief: string, callbackUrl: string) {
-  // Basic XML escape for the brief text
-  const safe = brief
+function xmlEscape(s: string) {
+  return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+// French spoken brief for the actual phone call (the console shows the English one).
+export const PHONE_BRIEF_FR =
+  "Ici MAYDAY. Le checkout de la boutique vient de tomber. Taux d'erreur : quarante et un pour cent. " +
+  "Cause : le commit abc123 a pointé le service d'inventaire vers un port mort. " +
+  "Impact : cent cinquante euros par minute. Je propose d'annuler ce commit, redéploiement en quatre-vingt-dix secondes.";
+
+function buildTwiml(brief: string, callbackUrl: string) {
+  const safe = xmlEscape(brief);
+  const cb = xmlEscape(callbackUrl);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="1"/>
-  <Say voice="Polly.Lea-Neural" language="fr-FR">Alerte Mayday. ${safe}</Say>
-  <Gather numDigits="1" action="${callbackUrl}" method="POST" timeout="15">
-    <Say voice="Polly.Lea-Neural" language="fr-FR">Tapez 1 pour lancer le rollback, 2 pour annuler et escalader, 3 pour attendre.</Say>
+  <Say voice="Polly.Lea-Neural" language="fr-FR">${safe}</Say>
+  <Gather input="dtmf speech" language="fr-FR" numDigits="1" timeout="12" speechTimeout="auto" hints="go, rollback, wait, vas-y, attends, annule" action="${cb}" method="POST">
+    <Say voice="Polly.Lea-Neural" language="fr-FR">Dites GO pour lancer le correctif, ROLLBACK pour annuler et escalader, ou WAIT pour attendre. Vous pouvez aussi taper 1, 2 ou 3.</Say>
   </Gather>
-  <Say voice="Polly.Lea-Neural" language="fr-FR">Aucune réponse détectée. J'attends.</Say>
+  <Say voice="Polly.Lea-Neural" language="fr-FR">Aucune réponse détectée. J'attends. Au revoir.</Say>
 </Response>`;
+}
+
+function basicAuth(user: string, pass: string) {
+  const raw = `${user}:${pass}`;
+  if (typeof btoa !== "undefined") return btoa(raw);
+  return Buffer.from(raw).toString("base64");
+}
+
+async function placeCall(to: string, from: string, twiml: string): Promise<{ sid?: string }> {
+  const body = new URLSearchParams({ To: to, From: from, Twiml: twiml });
+
+  // Preferred: direct Twilio REST API with real credentials.
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (accountSid && authToken) {
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basicAuth(accountSid, authToken)}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+    const payload = (await res.json().catch(() => ({}))) as { sid?: string; message?: string };
+    if (!res.ok) throw new Error(`Twilio ${res.status}: ${payload?.message || JSON.stringify(payload)}`);
+    return payload;
+  }
+
+  // Fallback: Lovable Twilio connector gateway.
+  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+  const TWILIO_API_KEY = process.env.TWILIO_API_KEY;
+  if (!LOVABLE_API_KEY || !TWILIO_API_KEY) {
+    throw new Error("Twilio not configured — set TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN (or the Lovable Twilio connector)");
+  }
+  const res = await fetch("https://connector-gateway.lovable.dev/twilio/Calls.json", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "X-Connection-Api-Key": TWILIO_API_KEY,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+  const payload = (await res.json().catch(() => ({}))) as { sid?: string; message?: string };
+  if (!res.ok) throw new Error(`Twilio ${res.status}: ${payload?.message || JSON.stringify(payload)}`);
+  return payload;
 }
 
 export const startMaydayCall = createServerFn({ method: "POST" })
@@ -29,17 +85,12 @@ export const startMaydayCall = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const { incidentStore } = await import("./store.server");
-    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-    const TWILIO_API_KEY = process.env.TWILIO_API_KEY;
-    if (!LOVABLE_API_KEY || !TWILIO_API_KEY) {
-      throw new Error("Twilio not configured (missing LOVABLE_API_KEY or TWILIO_API_KEY)");
-    }
 
     const id = `INC-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const req = getRequest();
     const origin = new URL(req.url).origin;
     const callback = `${origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}`;
-    const twiml = buildTwiml(data.brief, callback);
+    const twiml = buildTwiml(PHONE_BRIEF_FR, callback);
 
     incidentStore.set(id, {
       id,
@@ -51,30 +102,16 @@ export const startMaydayCall = createServerFn({ method: "POST" })
       updatedAt: Date.now(),
     });
 
-    const body = new URLSearchParams({
-      To: data.to,
-      From: data.from,
-      Twiml: twiml,
-    });
-
-    const res = await fetch("https://connector-gateway.lovable.dev/twilio/Calls.json", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": TWILIO_API_KEY,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body,
-    });
-    const payload = (await res.json().catch(() => ({}))) as { sid?: string; message?: string; code?: number };
-    if (!res.ok) {
+    try {
+      const payload = await placeCall(data.to, data.from, twiml);
+      const rec = incidentStore.get(id)!;
+      rec.callSid = payload.sid;
+      rec.updatedAt = Date.now();
+      return { id, callSid: payload.sid ?? null };
+    } catch (e) {
       incidentStore.delete(id);
-      throw new Error(`Twilio ${res.status}: ${payload?.message || JSON.stringify(payload)}`);
+      throw e;
     }
-    const rec = incidentStore.get(id)!;
-    rec.callSid = payload.sid;
-    rec.updatedAt = Date.now();
-    return { id, callSid: payload.sid ?? null };
   });
 
 export const getIncidentDecision = createServerFn({ method: "GET" })
