@@ -177,16 +177,31 @@ export async function placeMaydayCall(opts: {
   }
 }
 
+const E164 = /^\+\d{6,15}$/;
+
 export const startMaydayCall = createServerFn({ method: "POST" })
-  .inputValidator((input: { to: string; from: string; brief: string; stateUrl?: string }) => {
-    if (!/^\+\d{6,15}$/.test(input.to)) throw new Error("To must be E.164 (+33...)");
-    if (!/^\+\d{6,15}$/.test(input.from)) throw new Error("From must be E.164 Twilio number");
-    return input;
-  })
+  .inputValidator(
+    (input: { to?: string; from?: string; brief?: string; stateUrl?: string }) => input ?? {},
+  )
   .handler(async ({ data }) => {
     const req = getRequest();
     const origin = new URL(req.url).origin;
-    return placeMaydayCall({ to: data.to, from: data.from, origin, stateUrl: data.stateUrl });
+    // Fall back to the account's own numbers if the client didn't provide valid
+    // ones — so a fresh session with Twilio configured still rings out of the box.
+    let to = data.to;
+    let from = data.from;
+    if (!E164.test(to || "") || !E164.test(from || "")) {
+      const d = await discoverNumbers();
+      if (!E164.test(to || "")) to = d.to;
+      if (!E164.test(from || "")) from = d.from;
+    }
+    if (!E164.test(to || "")) {
+      throw new Error("No verified To number — verify a caller ID in Twilio or set it in CONFIG");
+    }
+    if (!E164.test(from || "")) {
+      throw new Error("No Twilio From number — set it in CONFIG");
+    }
+    return placeMaydayCall({ to: to!, from: from!, origin, stateUrl: data.stateUrl });
   });
 
 // What the server can actually do right now — shown in the CONFIG panel so

@@ -177,6 +177,12 @@ export function MaydayConsole() {
   // Synchronous re-entry lock: prevents a double Twilio call when the effect
   // re-runs before setTwilioId commits (StrictMode / rapid re-renders).
   const callPlacingRef = useRef(false);
+  // Did the user ever explicitly choose the REAL CALL toggle? Captured at init
+  // BEFORE the persistence effect overwrites the key — so a fresh session can
+  // default to a real call while a returning user's choice is respected.
+  const userSetRealRef = useRef(
+    typeof window !== "undefined" && localStorage.getItem("mayday.real") !== null,
+  );
   // Which call's decision has already been applied — so a re-rendered poll
   // interval can't process the same decision twice (double "WAIT" / "GO").
   const decisionHandledForRef = useRef<string | null>(null);
@@ -228,6 +234,12 @@ export function MaydayConsole() {
         setVoiceStatus(s);
         setToNumber((cur) => cur || s.suggestedTo || "");
         setFromNumber((cur) => cur || s.suggestedFrom || "");
+        // If the server can really place a call and the user hasn't chosen
+        // otherwise, default REAL CALL on — so a fresh session rings on Break
+        // instead of silently running in simulation.
+        if ((s.twilioDirect || s.twilioConnector) && !userSetRealRef.current) {
+          setRealCallEnabled(true);
+        }
       })
       .catch(() => setVoiceStatus(null));
     fetchBrainStatus({})
@@ -586,10 +598,6 @@ export function MaydayConsole() {
   // Trigger real Twilio call the moment the script starts ringing
   useEffect(() => {
     if (!ringing || !realCallEnabled || twilioId || callPlacingRef.current) return;
-    if (!toNumber || !fromNumber) {
-      setCallStatus("Set your phone + Twilio number in CONFIG to enable the real call");
-      return;
-    }
     if (originIsLocal()) {
       // The call would ring, but Twilio can't reach a localhost webhook, so the
       // spoken reply would never come back. Warn instead of half-working.
@@ -1772,10 +1780,24 @@ function IPhone15({
         </div>
       </div>
 
-      {/* status line under the phone */}
-      <div className="mt-2 min-h-[16px] text-center text-mono text-[11px] text-muted-foreground">
-        {callStatus || (realCallEnabled ? `on-call · ${maskPhone(toNumber)}` : "simulation mode")}
-      </div>
+      {/* status line under the phone — turns red on a call problem */}
+      {(() => {
+        const err = /failed|⚠|no verified|not configured|no twilio|call failed/i.test(callStatus);
+        return (
+          <div
+            className={`mt-2 min-h-[16px] max-w-[320px] text-center text-mono text-[11px] ${
+              err
+                ? "border border-danger bg-danger/5 px-2 py-1 font-semibold text-danger"
+                : "text-muted-foreground"
+            }`}
+          >
+            {callStatus ||
+              (realCallEnabled
+                ? `real call armed · ${maskPhone(toNumber)}`
+                : "simulation mode · enable REAL CALL in config")}
+          </div>
+        );
+      })()}
     </div>
   );
 }
