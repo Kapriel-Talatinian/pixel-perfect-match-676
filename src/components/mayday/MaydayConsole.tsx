@@ -1580,9 +1580,9 @@ function IPhone15({
   const screenBg = darkScreen ? "#0b0b0c" : "#ffffff";
 
   return (
-    <div className="mx-auto w-full" style={{ maxWidth: 340 }}>
+    <div className="mx-auto flex flex-col items-center">
       {/* caption above the device */}
-      <div className="mb-3 flex items-center justify-center gap-2 text-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+      <div className="mb-2 flex items-center justify-center gap-2 text-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
         <span className={`h-1.5 w-1.5 ${realCallEnabled ? "bg-primary pulse-dot" : "bg-border"}`} />
         {realCallEnabled
           ? gradiumOn
@@ -1591,9 +1591,12 @@ function IPhone15({
           : "on-call line"}
       </div>
 
-      {/* Titanium frame */}
+      {/* Titanium frame — sized by viewport height so the whole phone is always
+          visible without scrolling. Width follows the 9:19.5 aspect ratio. */}
       <div
         style={{
+          height: "min(calc(100vh - 168px), 720px)",
+          aspectRatio: "9 / 19.5",
           borderRadius: 58,
           padding: 11,
           background: "linear-gradient(155deg,#5a5a5e 0%,#2a2a2c 38%,#161618 100%)",
@@ -1601,7 +1604,7 @@ function IPhone15({
         }}
       >
         <div
-          className="relative aspect-[9/19.5] w-full overflow-hidden"
+          className="relative h-full w-full overflow-hidden"
           style={{ borderRadius: 47, background: screenBg }}
         >
           {/* Dynamic Island */}
@@ -1770,7 +1773,7 @@ function IPhone15({
       </div>
 
       {/* status line under the phone */}
-      <div className="mt-3 min-h-[16px] text-center text-mono text-[11px] text-muted-foreground">
+      <div className="mt-2 min-h-[16px] text-center text-mono text-[11px] text-muted-foreground">
         {callStatus || (realCallEnabled ? `on-call · ${maskPhone(toNumber)}` : "simulation mode")}
       </div>
     </div>
