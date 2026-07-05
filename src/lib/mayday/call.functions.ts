@@ -12,17 +12,17 @@ function xmlEscape(s: string) {
     .replace(/"/g, "&quot;");
 }
 
-// French spoken brief for the actual phone call (the console shows the English one).
-export const PHONE_BRIEF_FR =
-  "Ici MAYDAY. Le checkout de la boutique vient de tomber. Taux d'erreur : quarante et un pour cent. " +
-  "Cause : le commit abc123 a pointé le service d'inventaire vers un port mort. " +
-  "Impact : cent cinquante euros par minute. Je propose d'annuler ce commit, redéploiement en quatre-vingt-dix secondes.";
+// English spoken brief for the actual phone call (matches the on-screen brief).
+export const PHONE_BRIEF_EN =
+  "MAYDAY here. Checkout on the shop service just went down. Error rate forty-one percent. " +
+  "Root cause: commit abc123 pointed the inventory service to a dead port. " +
+  "Impact: one hundred fifty euros per minute. I propose to revert that commit; redeploy in ninety seconds.";
 
 // DTMF keypad prompt (reliable — no STT). Trial preamble consumes one keypress,
 // so the on-call presses a key first, then 1 / 2 / 3 here.
-const KEYPAD_PROMPT_FR =
-  "Tapez 1 pour lancer le correctif, 2 pour annuler et escalader, ou 3 pour attendre.";
-const NO_KEY_FR = "Aucune touche détectée. J'attends par défaut. Au revoir.";
+const KEYPAD_PROMPT_EN =
+  "Press 1 to proceed with the fix, 2 to roll back and escalate, or 3 to wait.";
+const NO_KEY_EN = "No key detected. I'll wait by default. Goodbye.";
 
 // Fallback flow (no Gradium key): Polly TTS + DTMF keypad via <Gather>.
 function buildPollyTwiml(brief: string, callbackUrl: string) {
@@ -31,11 +31,11 @@ function buildPollyTwiml(brief: string, callbackUrl: string) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="1"/>
-  <Say voice="Polly.Lea-Neural" language="fr-FR">${safe}</Say>
+  <Say voice="Polly.Joanna-Neural" language="en-US">${safe}</Say>
   <Gather input="dtmf" numDigits="1" timeout="15" action="${cb}" method="POST">
-    <Say voice="Polly.Lea-Neural" language="fr-FR">${xmlEscape(KEYPAD_PROMPT_FR)}</Say>
+    <Say voice="Polly.Joanna-Neural" language="en-US">${xmlEscape(KEYPAD_PROMPT_EN)}</Say>
   </Gather>
-  <Say voice="Polly.Lea-Neural" language="fr-FR">${xmlEscape(NO_KEY_FR)}</Say>
+  <Say voice="Polly.Joanna-Neural" language="en-US">${xmlEscape(NO_KEY_EN)}</Say>
 </Response>`;
 }
 
@@ -45,9 +45,9 @@ function buildPollyTwiml(brief: string, callbackUrl: string) {
 async function buildGradiumTwiml(origin: string, id: string, state: string | null) {
   const stateQ = state ? `&state=${encodeURIComponent(state)}` : "";
   const cb = `${origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}${stateQ}`;
-  const briefAudio = xmlEscape(await ttsUrl(origin, `${PHONE_BRIEF_FR} ${KEYPAD_PROMPT_FR}`));
-  const promptAudio = xmlEscape(await ttsUrl(origin, KEYPAD_PROMPT_FR));
-  const noKeyAudio = xmlEscape(await ttsUrl(origin, NO_KEY_FR));
+  const briefAudio = xmlEscape(await ttsUrl(origin, `${PHONE_BRIEF_EN} ${KEYPAD_PROMPT_EN}`));
+  const promptAudio = xmlEscape(await ttsUrl(origin, KEYPAD_PROMPT_EN));
+  const noKeyAudio = xmlEscape(await ttsUrl(origin, NO_KEY_EN));
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="1"/>
@@ -150,13 +150,13 @@ export async function placeMaydayCall(opts: {
   const callback = `${opts.origin}/api/public/mayday/voice-response?id=${encodeURIComponent(id)}${state ? `&state=${encodeURIComponent(state)}` : ""}`;
   const twiml = useGradium
     ? await buildGradiumTwiml(opts.origin, id, state)
-    : buildPollyTwiml(PHONE_BRIEF_FR, callback);
+    : buildPollyTwiml(PHONE_BRIEF_EN, callback);
 
   incidentStore.set(id, {
     id,
     to: opts.to,
     from: opts.from,
-    brief: PHONE_BRIEF_FR,
+    brief: PHONE_BRIEF_EN,
     callStatus: "queued",
     decision: null,
     createdAt: Date.now(),

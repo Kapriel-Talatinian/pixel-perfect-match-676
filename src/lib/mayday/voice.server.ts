@@ -1,34 +1,36 @@
 // Shared helpers for the two Twilio webhooks (Gather-based fallback and
-// Gradium Record-based flow): reply normalization, decision persistence,
-// and the French confirmation lines.
+// Gradium flow): reply normalization, decision persistence, English spoken lines.
 
 export type Decision = "go" | "rollback" | "wait";
 
-// Normalize a spoken reply (fr) or DTMF digit to a decision.
+// Normalize a DTMF digit (or spoken keyword, en/fr) to a decision.
 export function normalizeReply(digits: string, speech: string): Decision | null {
   if (digits === "1") return "go";
   if (digits === "2") return "rollback";
   if (digits === "3") return "wait";
   const s = speech.toLowerCase();
   if (!s.trim()) return null;
-  if (/roll\s?back|annul|escalad|stop\b|surtout pas|non\b/.test(s)) return "rollback";
-  if (/attend|wait|patiente|pas (tout de suite|encore)|plus tard/.test(s)) return "wait";
-  if (/\bgo\b|vas[- ]?y|vazy|c'est parti|lance|ouais|oui\b|ok\b|okay|d'accord|confirme/.test(s))
+  if (/roll\s?back|escalate|annul|escalad|stop\b|do ?n'?t|surtout pas|non\b/.test(s))
+    return "rollback";
+  if (/wait|hold|later|attend|patiente|pas (tout de suite|encore)|plus tard/.test(s)) return "wait";
+  if (
+    /\bgo\b|proceed|yes\b|okay|ok\b|do it|confirm|vas[- ]?y|c'est parti|lance|ouais|oui\b/.test(s)
+  )
     return "go";
   return null;
 }
 
-export const CONFIRM_FR: Record<Decision, string> = {
-  go: "C'est parti. J'annule le commit fautif et je redéploie. Vérification dans quatre-vingt-dix secondes. Merci, vous pouvez raccrocher.",
+export const CONFIRM_EN: Record<Decision, string> = {
+  go: "Got it. Reverting the bad commit and redeploying. I'll verify recovery in ninety seconds. Thanks, you can hang up.",
   rollback:
-    "Compris, je n'y touche pas. J'escalade à l'équipe d'astreinte avec toutes les preuves. Fin d'appel.",
-  wait: "Très bien, j'attends. Je vous rappelle si la situation empire.",
+    "Understood, I won't touch it. Escalating to the on-call team with all the evidence. Goodbye.",
+  wait: "Alright, I'll hold. I'll call you back if it gets worse.",
 };
 
-export const REASK_FR =
-  "Je n'ai pas compris. Tapez 1 pour lancer, 2 pour annuler, ou 3 pour attendre.";
-export const DEFAULT_WAIT_FR =
-  "Réponse non reconnue. J'attends par défaut et je préviens l'équipe. Au revoir.";
+export const REASK_EN =
+  "Sorry, I didn't catch that. Press 1 to proceed, 2 to roll back, or 3 to wait.";
+export const DEFAULT_WAIT_EN =
+  "No valid response. I'll wait by default and notify the team. Goodbye.";
 
 // Persist a decision: in-memory store (same-isolate) + the VM shop's shared
 // decision state (cross-isolate source of truth), best effort.

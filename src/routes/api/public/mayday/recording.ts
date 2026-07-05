@@ -2,9 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { gradiumStt, ttsUrl } from "@/lib/mayday/gradium.server";
 import { twilioBasicAuth, twilioCreds } from "@/lib/mayday/twilio.server";
 import {
-  CONFIRM_FR,
-  DEFAULT_WAIT_FR,
-  REASK_FR,
+  CONFIRM_EN,
+  DEFAULT_WAIT_EN,
+  REASK_EN,
   normalizeReply,
   recordDecision,
 } from "@/lib/mayday/voice.server";
@@ -28,7 +28,7 @@ async function playOrSay(origin: string, text: string) {
   try {
     return `<Play>${xmlEscape(await ttsUrl(origin, text))}</Play>`;
   } catch {
-    return `<Say voice="Polly.Lea-Neural" language="fr-FR">${xmlEscape(text)}</Say>`;
+    return `<Say voice="Polly.Joanna-Neural" language="en-US">${xmlEscape(text)}</Say>`;
   }
 }
 
@@ -73,7 +73,7 @@ export const Route = createFileRoute("/api/public/mayday/recording")({
         if (!normalizeReply(digits, "") && recordingUrl && durationS > 0) {
           try {
             const audio = await fetchRecording(recordingUrl);
-            transcript = await gradiumStt(audio, "audio/wav", "fr");
+            transcript = await gradiumStt(audio, "audio/wav", "en");
           } catch {
             transcript = ""; // STT down → treated as unclear
           }
@@ -83,18 +83,18 @@ export const Route = createFileRoute("/api/public/mayday/recording")({
 
         if (decision) {
           await recordDecision(id, decision, state);
-          return twiml(await playOrSay(origin, CONFIRM_FR[decision]));
+          return twiml(await playOrSay(origin, CONFIRM_EN[decision]));
         }
 
         if (attempt < 2) {
           const cb = `${origin}/api/public/mayday/recording?id=${encodeURIComponent(id)}${state ? `&state=${encodeURIComponent(state)}` : ""}&n=2`;
           return twiml(
-            `${await playOrSay(origin, REASK_FR)}<Record action="${xmlEscape(cb)}" method="POST" maxLength="7" timeout="4" playBeep="true" trim="trim-silence" finishOnKey="123"/>${await playOrSay(origin, DEFAULT_WAIT_FR)}`,
+            `${await playOrSay(origin, REASK_EN)}<Record action="${xmlEscape(cb)}" method="POST" maxLength="7" timeout="4" playBeep="true" trim="trim-silence" finishOnKey="123"/>${await playOrSay(origin, DEFAULT_WAIT_EN)}`,
           );
         }
 
         await recordDecision(id, "wait", state);
-        return twiml(await playOrSay(origin, DEFAULT_WAIT_FR));
+        return twiml(await playOrSay(origin, DEFAULT_WAIT_EN));
       },
     },
   },

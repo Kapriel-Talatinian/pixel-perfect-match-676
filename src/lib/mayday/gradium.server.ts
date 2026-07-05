@@ -2,10 +2,11 @@
 //
 // Env:
 //   GRADIUM_API_KEY    required to enable Gradium voices
-//   GRADIUM_VOICE_ID   optional, default Elise (fr) "b35yykvVppLXyw_l"
+//   GRADIUM_VOICE_ID   optional, default Emma (en) "YTpq7expH9539ERJ"
+//                      other EN: Kent LFZvm12tW_z0xfGo, John KWJiFWu2O9nMPYcR
 //   GRADIUM_API_BASE   optional, default https://api.gradium.ai (mockable in tests)
 
-const DEFAULT_VOICE_FR = "b35yykvVppLXyw_l"; // Elise — French catalog voice
+const DEFAULT_VOICE_EN = "YTpq7expH9539ERJ"; // Emma — English catalog voice
 
 export function gradiumApiBase() {
   return (process.env.GRADIUM_API_BASE || "https://api.gradium.ai").replace(/\/$/, "");
@@ -16,7 +17,7 @@ export function gradiumConfigured() {
 }
 
 export function gradiumVoiceId() {
-  return process.env.GRADIUM_VOICE_ID || DEFAULT_VOICE_FR;
+  return process.env.GRADIUM_VOICE_ID || DEFAULT_VOICE_EN;
 }
 
 // Text → WAV bytes (48kHz 16-bit mono). Twilio <Play> accepts WAV over HTTPS.
@@ -48,7 +49,7 @@ export async function gradiumTts(
 export async function gradiumStt(
   audio: ArrayBuffer,
   contentType = "audio/wav",
-  language = "fr",
+  language = "en",
 ): Promise<string> {
   const key = process.env.GRADIUM_API_KEY;
   if (!key) throw new Error("GRADIUM_API_KEY not set");

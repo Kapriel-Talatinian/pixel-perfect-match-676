@@ -32,9 +32,9 @@ function handle(request: Request) {
     `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="dtmf" numDigits="1" timeout="10" action="${xmlEscape(action)}" method="POST">
-    <Say voice="Polly.Lea-Neural" language="fr-FR">Test MAYDAY. Tapez 1 pour GO.</Say>
+    <Say voice="Polly.Joanna-Neural" language="en-US">Test MAYDAY. Press 1 for GO.</Say>
   </Gather>
-  <Say voice="Polly.Lea-Neural" language="fr-FR">Aucune touche. Au revoir.</Say>
+  <Say voice="Polly.Joanna-Neural" language="en-US">No key. Goodbye.</Say>
 </Response>`,
     { headers: { "Content-Type": "text/xml; charset=utf-8" } },
   );

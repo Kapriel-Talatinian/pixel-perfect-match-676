@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  CONFIRM_FR,
-  DEFAULT_WAIT_FR,
-  REASK_FR,
+  CONFIRM_EN,
+  DEFAULT_WAIT_EN,
+  REASK_EN,
   normalizeReply,
   recordDecision,
 } from "@/lib/mayday/voice.server";
@@ -17,7 +17,7 @@ function xmlEscape(s: string) {
 
 function say(sayFr: string) {
   return new Response(
-    `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Lea-Neural" language="fr-FR">${xmlEscape(sayFr)}</Say><Hangup/></Response>`,
+    `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna-Neural" language="en-US">${xmlEscape(sayFr)}</Say><Hangup/></Response>`,
     { headers: { "Content-Type": "text/xml; charset=utf-8" } },
   );
 }
@@ -28,9 +28,9 @@ function reAsk(callbackUrl: string) {
     `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="dtmf" numDigits="1" timeout="12" action="${cb}" method="POST">
-    <Say voice="Polly.Lea-Neural" language="fr-FR">${xmlEscape(REASK_FR)}</Say>
+    <Say voice="Polly.Joanna-Neural" language="en-US">${xmlEscape(REASK_EN)}</Say>
   </Gather>
-  <Say voice="Polly.Lea-Neural" language="fr-FR">Toujours rien. J'attends par défaut. Au revoir.</Say>
+  <Say voice="Polly.Joanna-Neural" language="en-US">Still nothing. I'll wait by default. Goodbye.</Say>
 </Response>`,
     { headers: { "Content-Type": "text/xml; charset=utf-8" } },
   );
@@ -50,12 +50,12 @@ export const Route = createFileRoute("/api/public/mayday/voice-response")({
         const speech = String(form.get("SpeechResult") ?? "");
 
         const { incidentStore } = await import("@/lib/mayday/store.server");
-        if (!incidentStore.get(id) && !state) return say("Incident inconnu. Fin d'appel.");
+        if (!incidentStore.get(id) && !state) return say("Unknown incident. Ending the call.");
 
         const decision = normalizeReply(digits, speech);
         if (decision) {
           await recordDecision(id, decision, state);
-          return say(CONFIRM_FR[decision]);
+          return say(CONFIRM_EN[decision]);
         }
 
         // Unclear reply → re-ask once, then default to wait.
@@ -64,7 +64,7 @@ export const Route = createFileRoute("/api/public/mayday/voice-response")({
           return reAsk(cb);
         }
         await recordDecision(id, "wait", state);
-        return say(DEFAULT_WAIT_FR);
+        return say(DEFAULT_WAIT_EN);
       },
     },
   },
