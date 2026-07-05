@@ -1,10 +1,13 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Audio,
   Easing,
+  Sequence,
   Series,
   interpolate,
   spring,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -27,7 +30,7 @@ import {
 } from "./theme";
 
 const FPS = 30;
-const S1 = 7, S2 = 11, S3 = 22, S4 = 14, S5 = 34, S6 = 30, S7 = 20, S8 = 18;
+const S1 = 7, S2 = 11, S3 = 22, S4 = 14, S5 = 34, S6 = 36, S7 = 20, S8 = 18;
 export const TOTAL_FRAMES = (S1 + S2 + S3 + S4 + S5 + S6 + S7 + S8) * FPS;
 
 // ————————————————————————————————————————————————————————————————— shell —
@@ -513,9 +516,9 @@ const Iphone: React.FC<{ t: number }> = ({ t }) => {
   const connectedSecs = Math.max(0, Math.floor(t - 8));
   const brief =
     "MAYDAY here. Checkout just went down. Error rate 41%. Commit abc123 pointed inventory to a dead port. I propose to revert. Press 1 to proceed, 2 to roll back, 3 to wait.";
-  const typed = brief.slice(0, Math.max(0, Math.floor((t - 8.6) * 30)));
-  const pressed = t > 20.5;
-  const keyScale = pressed ? 1 + Math.max(0, 1 - (t - 20.5) * 3) * 0.25 : 1;
+  const typed = brief.slice(0, Math.max(0, Math.floor((t - 8.8) * 15)));
+  const pressed = t > 26.4;
+  const keyScale = pressed ? 1 + Math.max(0, 1 - (t - 26.4) * 3) * 0.25 : 1;
   return (
     <div
       style={{
@@ -688,10 +691,23 @@ const CallScene: React.FC = () => {
     { at: 0.6, txt: "Twilio places a real outbound call — the phone on the table rings." },
     { at: 8.4, txt: "The human answers → StatusCallback → the screen flips to CONNECTED, live." },
     { at: 13.5, txt: "Gradium TTS speaks the brief: root cause, € impact, proposed fix." },
-    { at: 20.8, txt: "Keypad decision — 1 GO · 2 ROLLBACK · 3 WAIT. Deterministic. No STT flakiness." },
+    { at: 26.8, txt: "Keypad decision — 1 GO · 2 ROLLBACK · 3 WAIT. Deterministic. No STT flakiness." },
   ];
   return (
     <Frame kicker="step 3 · it phones a human" step="real call · real approval">
+      {/* Call audio — the only sound in the film: ring, voice brief, DTMF, confirmation */}
+      <Sequence from={Math.round(0.4 * fps)} durationInFrames={Math.round(7.4 * fps)}>
+        <Audio src={staticFile("ring.wav")} volume={0.5} />
+      </Sequence>
+      <Sequence from={Math.round(8.8 * fps)}>
+        <Audio src={staticFile("brief.wav")} />
+      </Sequence>
+      <Sequence from={Math.round(26.4 * fps)}>
+        <Audio src={staticFile("dtmf1.wav")} volume={0.7} />
+      </Sequence>
+      <Sequence from={Math.round(27.0 * fps)}>
+        <Audio src={staticFile("confirm.wav")} />
+      </Sequence>
       <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 110 }}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 34 }}>
           {steps.map((s, i) => (
