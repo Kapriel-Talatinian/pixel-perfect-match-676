@@ -697,7 +697,7 @@ const CallScene: React.FC = () => {
     <Frame kicker="step 3 · it phones a human" step="real call · real approval">
       {/* Call audio — the only sound in the film: ring, voice brief, DTMF, confirmation */}
       <Sequence from={Math.round(0.4 * fps)} durationInFrames={Math.round(7.4 * fps)}>
-        <Audio src={staticFile("ring.wav")} volume={0.5} />
+        <Audio src={staticFile("ring.wav")} volume={0.9} />
       </Sequence>
       <Sequence from={Math.round(8.8 * fps)}>
         <Audio src={staticFile("brief.wav")} />
